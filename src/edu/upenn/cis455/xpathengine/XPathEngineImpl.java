@@ -1,8 +1,13 @@
 package edu.upenn.cis455.xpathengine;
 
-import org.w3c.dom.Document;
+import org.w3c.dom.*;
 
-import com.sun.org.apache.xerces.internal.impl.xpath.regex.ParseException;
+import javax.xml.parsers.*;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Stack;
+
 
 public class XPathEngineImpl implements XPathEngine {
 	
@@ -32,7 +37,7 @@ public class XPathEngineImpl implements XPathEngine {
 		}
 	}
 	
-	public class XPathException extends Exception {
+	private class XPathException extends Exception {
 	    public XPathException() {
 	        super("Invalid XPath");
 	    }
@@ -139,7 +144,8 @@ public class XPathEngineImpl implements XPathEngine {
 		
 	}
 	
-	// step --> nodename ([ test ])* (axis step)?	
+	// step --> nodename ([ test ])* (axis step)?
+	// TODO: * repeat
 	private void step() throws XPathException {
 		nodename();
 		if (this.next != -1) {
@@ -173,9 +179,97 @@ public class XPathEngineImpl implements XPathEngine {
 		}
 	}
   
-  public boolean[] evaluate(Document d) { 
-    /* TODO: Check whether the document matches the XPath expressions */
-    return null; 
-  }
+	public boolean[] evaluate(Document d) { 
+		if (d == null) return null;
+		boolean[] evals = new boolean[this.xpaths.length];
+		for (int i = 0; i < this.xpaths.length; i++) {
+			if (!isValid(i)) { 
+				// If the ith xpath is invalid, 
+				// it automatically evaluates to false
+				evals[i] = false; 
+			} else {
+				String path = this.xpaths[i];
+				String[] steps = path.split("/");	
+				// TODO: handle split characters within text
+				Element root = d.getDocumentElement();
+			}
+		}
+		return null; 
+  	}
+	
+	// Given a step, returns any tests within the step
+	public ArrayList<String> getTest(String step) {
+		
+		// TODO: handle brackets within a string
+		ArrayList<String> tests = new ArrayList<String>();
+		
+		if (step.indexOf('[') != -1) {
+			StringBuilder s = new StringBuilder();
+			int depth = 0;
+			for (int i = step.indexOf('['); i < step.length(); i++) {
+				char c = step.charAt(i);
+				if (c == '[') {
+					if (depth > 0) {
+						s.append(c); // nested bracket
+					}
+					depth ++;
+				} else if (c == ']') {
+					depth --;
+					// if closing bracket is not nested
+					// add test to the return list
+					if (depth == 0) {
+						tests.add(s.toString());
+						s = new StringBuilder();
+					} else {
+						s.append(c); // nested bracket
+					}
+				} else {
+					s.append(c);
+				}
+			}
+		} 
+		return tests;
+	}
+	
+	private Test getTestType(String test) {
+		if (test.indexOf("text(") == 0) return Test.TEXT;
+		else if (test.indexOf("contains(") == 0) return Test.CONTAINS_TEXT;
+		else if (test.indexOf("@")  == 0) return Test.ATTRIBUTE;
+		else return Test.STEP;
+	}
+	
+	private enum Test {
+		TEXT, CONTAINS_TEXT, ATTRIBUTE, STEP;
+	}
+	
+	public void compareStep(String step, Node node) {
+		ArrayList<String> tests = getTest(step);
+	}
+	
+	public boolean compareTests(ArrayList<String> tests, Node node) {
+		for (String t : tests) {
+			switch(getTestType(t)) {
+			case TEXT: 
+				String text = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
+				String nodeText = node.getTextContent();
+				if (nodeText == null || !nodeText.equals(text)) return false;
+				break;
+			case CONTAINS_TEXT: 
+				String contains = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
+				String nodeContains = node.getTextContent();
+				if (nodeContains == null || !nodeContains.contains(contains)) return false;
+				break;
+			case ATTRIBUTE:
+				String attr = t.substring(t.indexOf("@") + 1, t.indexOf("=")).trim();
+				String attrVal = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
+				Node attrNode = node.getAttributes().getNamedItem(attr);
+				if (attrNode == null || attrNode.getNodeValue().equals(attrVal)) return false;
+				break;
+			case STEP: break;
+			}
+		
+		}
+		return true;
+	}
         
 }

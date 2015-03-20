@@ -253,7 +253,7 @@ public class DOMWriter {
                 break;
             }
 
-            // print element with attributes
+        // print element with attributes
         case Node.ELEMENT_NODE: {
                 out.print('<');
                 out.print(node.getNodeName());
@@ -295,7 +295,7 @@ public class DOMWriter {
                 break;
             }
 
-            // print cdata sections
+        // print cdata sections
         case Node.CDATA_SECTION_NODE: {
                 if ( canonical ) {
                     out.print(normalize(node.getNodeValue()));
@@ -307,7 +307,7 @@ public class DOMWriter {
                 break;
             }
 
-            // print text
+        // print text
         case Node.TEXT_NODE: {
                 out.print(normalize(node.getNodeValue()));
                 break;
