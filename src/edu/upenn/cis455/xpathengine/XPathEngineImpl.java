@@ -2,11 +2,7 @@ package edu.upenn.cis455.xpathengine;
 
 import org.w3c.dom.*;
 
-import javax.xml.parsers.*;
-
-import java.io.*;
 import java.util.ArrayList;
-import java.util.Stack;
 
 
 public class XPathEngineImpl implements XPathEngine {
@@ -14,7 +10,7 @@ public class XPathEngineImpl implements XPathEngine {
 	String[] xpaths = new String[0];
 	String path;
 	int next;
-	char c;
+	Character c;
 
 	public XPathEngineImpl() {
 		// Do NOT add arguments to the constructor!!
@@ -28,11 +24,17 @@ public class XPathEngineImpl implements XPathEngine {
 		this.path = this.xpaths[i];
 		if (this.path.isEmpty()) return false;
 		this.next = 0;
-		getNext();
 		try {
+			getNext();
 			axis();
+			path = null;
+//			System.out.println("----END ISVALID----");
+//			System.out.println("");
 			return true;
 		} catch (XPathException e) {
+			path = null;
+//			System.out.println("----END ISVALID----");
+//			System.out.println("");
 			return false;
 		}
 	}
@@ -57,6 +59,7 @@ public class XPathEngineImpl implements XPathEngine {
 		} else {
 			this.c = this.path.charAt(this.next);
 			this.next += 1;
+//			System.out.println(this.c + " " + this.next);
 			// only ignore whitespace if "whitespace" is true
 			if (whitespace) {
 				if (Character.isWhitespace(this.c)) {
@@ -68,9 +71,13 @@ public class XPathEngineImpl implements XPathEngine {
 	
 	// axis --> '/'
 	private void axis() throws XPathException {
-		if (this.c == '/'){
+//		System.out.println("axis");
+		if (this.c == '/'){ // further axis
+			getNext();
 			step();
-		} else if (this.next == -1) {
+		} else if (this.c == ']') { // end of step within test
+			return;
+		} else if (this.next == -1) { // end
 			 return;
 		} else {
 			throw new XPathException();
@@ -82,6 +89,7 @@ public class XPathEngineImpl implements XPathEngine {
 	//      --> contains(text(), "...")
 	//      --> @attname = "..."
 	private void test() throws XPathException {
+//		System.out.println("test");
 		if (isNextWord(new String[]{"text","(",")","=","\""})) text();
 		else if (isNextWord(new String[]{"contains","(","text","(",")",",","\""})) contains();
 		else if (isNextWord(new String[]{"@"})) attr();
@@ -92,6 +100,7 @@ public class XPathEngineImpl implements XPathEngine {
 	// if the word is found, pointer is at the end of the word
 	// else the pointer is reset 
 	private boolean isNextWord(String[] words) {
+//		System.out.println("next word: " + words[0]);
 		int temp = this.next;
 		for (int w=0; w < words.length; w++) {
 			String word = words[w];
@@ -109,6 +118,7 @@ public class XPathEngineImpl implements XPathEngine {
 	}
 	
 	private void text() throws XPathException {
+//		System.out.println("text");
 		getNext();
 		while(this.c != '"' && this.next != -1) { // TODO: check valid chars
 			getNext();
@@ -118,6 +128,7 @@ public class XPathEngineImpl implements XPathEngine {
 	}
 	
 	private void contains() throws XPathException {
+//		System.out.println("contains");
 		getNext();
 		while(this.c != '"' && this.next != -1) { // TODO: check valid chars
 			getNext();
@@ -129,6 +140,7 @@ public class XPathEngineImpl implements XPathEngine {
 	}
 	
 	private void attr() throws XPathException {
+//		System.out.println("attr");
 		while(this.c != '=' && this.next != -1) { // TODO: check valid chars
 			getNext();
 		}
@@ -144,12 +156,12 @@ public class XPathEngineImpl implements XPathEngine {
 		
 	}
 	
-	// step --> nodename ([ test ])* (axis step)?
-	// TODO: * repeat
+	// step --> nodename ([ test ])* (axis step)?s
 	private void step() throws XPathException {
+//		System.out.println("step");
 		nodename();
 		if (this.next != -1) {
-			if (this.c == '[') {
+			while (this.c == '[') {
 				test();
 				if (this.c != ']') throw new XPathException();
 				getNext();
@@ -161,11 +173,10 @@ public class XPathEngineImpl implements XPathEngine {
 	private void nodename() throws XPathException {
 		// -- Element names are case-sensitive
 		// -- Element names must start with a letter or underscore
-		// Element names cannot start with the letters xml (or XML, or Xml, etc)
+		// TODO: Element names cannot start with the letters xml (or XML, or Xml, etc)
 		// -- Element names can contain letters, digits, hyphens, underscores, and periods
 		// -- Element names cannot contain spaces
-				
-		getNext();
+		
 		// first character of a nodename must be a letter or underscore
 		if (!Character.isAlphabetic(this.c) && !(this.c == '_')) throw new XPathException();
 		
@@ -178,6 +189,11 @@ public class XPathEngineImpl implements XPathEngine {
 			getNext();
 		}
 	}
+	
+	
+	//
+	// Evaluate and helpers
+	//
   
 	public boolean[] evaluate(Document d) { 
 		if (d == null) return null;
@@ -189,17 +205,18 @@ public class XPathEngineImpl implements XPathEngine {
 				evals[i] = false; 
 			} else {
 				String path = this.xpaths[i];
-				String[] steps = path.split("/");	
-				// TODO: handle split characters within text
-				Element root = d.getDocumentElement();
+				
+				if (path.indexOf('/') == 0) path = path.substring(1);
+	
+				Node node = d.getDocumentElement();
+				evals[i] = compare(path, node, true);
 			}
 		}
-		return null; 
+		return evals; 
   	}
 	
 	// Given a step, returns any tests within the step
-	public ArrayList<String> getTest(String step) {
-		
+	public ArrayList<String> getTests(String step) {
 		// TODO: handle brackets within a string
 		ArrayList<String> tests = new ArrayList<String>();
 		
@@ -242,34 +259,95 @@ public class XPathEngineImpl implements XPathEngine {
 		TEXT, CONTAINS_TEXT, ATTRIBUTE, STEP;
 	}
 	
-	public void compareStep(String step, Node node) {
-		ArrayList<String> tests = getTest(step);
+	public boolean compare(String path, Node node) {
+		return compare(path, node, false);
 	}
 	
-	public boolean compareTests(ArrayList<String> tests, Node node) {
-		for (String t : tests) {
-			switch(getTestType(t)) {
-			case TEXT: 
-				String text = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
-				String nodeText = node.getTextContent();
-				if (nodeText == null || !nodeText.equals(text)) return false;
-				break;
-			case CONTAINS_TEXT: 
-				String contains = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
-				String nodeContains = node.getTextContent();
-				if (nodeContains == null || !nodeContains.contains(contains)) return false;
-				break;
-			case ATTRIBUTE:
-				String attr = t.substring(t.indexOf("@") + 1, t.indexOf("=")).trim();
-				String attrVal = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
-				Node attrNode = node.getAttributes().getNamedItem(attr);
-				if (attrNode == null || attrNode.getNodeValue().equals(attrVal)) return false;
-				break;
-			case STEP: break;
-			}
+	public boolean compare(String path, Node node, boolean init){
+		// Get the next step in the given path
+		String[] stepPath = getStep(path);
+		String step = stepPath[0];
+		String newPath = stepPath[1];
 		
+//		System.out.println("Compare: " + (!step.isEmpty() ? step : "<step>") + " " + (!newPath.isEmpty() ? newPath : "<path>"));
+		
+		// Check if this step has tests
+		ArrayList<String> tests = getTests(step);
+		if (tests.size() > 0) {
+			step = step.substring(0, step.indexOf('[')).trim();
+		}
+		while (!step.isEmpty()){
+			// Determine if the step name matches an 
+			// immediate descendant of the current node
+			NodeList l = node.getChildNodes();
+			for (int i = 0; i < l.getLength(); i++){
+				Node child = l.item(i);
+				// Deal with root node case
+				if (init && node.getNodeName().equals(step)) {
+					if (tests.size() > 0) {
+						for (int t = 0; t < tests.size(); t++) {
+							if (compareTest(tests.get(t), node)) {
+								tests.remove(t);
+							}
+						}
+						if (tests.isEmpty() && compare(newPath, node)) return true;
+					} else {
+						if (compare(newPath, node)) return true;
+					}
+				} else if (child.getParentNode().equals(node) && child.getNodeName().equals(step)) {
+					if (tests.size() > 0) {
+						// Check that all tests match some valid child node
+						for (int t = 0; t < tests.size(); t++) {
+							if (compareTest(tests.get(t), child)) {
+								tests.remove(t);
+							}
+						}
+						if (tests.isEmpty() && compare(newPath, child)) return true;
+					} else {
+						if (compare(newPath, child)) return true;
+					}
+				}
+			}
+			return false;
 		}
 		return true;
+	}
+	
+	public boolean compareTest(String t, Node node) {
+		switch(getTestType(t)) {
+		case TEXT: 
+			String text = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
+			String nodeText = node.getTextContent();
+			return (nodeText != null && nodeText.equals(text));
+		case CONTAINS_TEXT: 
+			String contains = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
+			String nodeContains = node.getTextContent();
+			return (nodeContains != null && nodeContains.indexOf(contains) != -1);
+		case ATTRIBUTE:
+			String attr = t.substring(t.indexOf("@") + 1, t.indexOf("=")).trim();
+			String attrVal = t.substring(t.indexOf("\"") + 1, t.lastIndexOf("\""));
+			Node attrNode = node.getAttributes().getNamedItem(attr);
+			return (attrNode != null && attrNode.getNodeValue().equals(attrVal));
+		case STEP: 
+			return compare(t, node);
+		default: return false;
+		}
+	}
+	
+	// Get next step and remaining path
+	public String[] getStep(String path) {
+		if (path == null || path.length() == 0) return new String[]{"",""};
+		boolean quote = false;
+		for (int i = 0; i < path.length(); i++) {
+			char c = path.charAt(i);
+			if (c == '/' && !quote) { // axis
+				return new String[] {path.substring(0, i), path.substring(i + 1)};
+			} else if (c == '"' && path.charAt(i - 1) != '\\') { // non-escaped quote
+				quote = !quote;
+			}
+		}
+		// the remainder of the path is one step
+		return new String[]{path, ""};
 	}
         
 }

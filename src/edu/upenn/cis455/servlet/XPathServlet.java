@@ -23,9 +23,10 @@ public class XPathServlet extends HttpServlet {
 	    }
 	    
 		try {
+			HttpClient client = new HttpClient(url);
 			PrintWriter out = response.getWriter();
 		    out.println("<html><head><title>XPath Servlet</title></head><body>");		    
-		    out.println("Xpath: " + xpath + "<br/>URL: " + url + "<br/>");
+		    out.println("Xpath: " + xpath + "<br/>URL: " + url + "<br/>" + client.getDoc());
 		    out.println("<a href=\"/HW2/xpath\">Return</a>");
 		    out.println("</body></html>");
 		} catch (IOException e) {

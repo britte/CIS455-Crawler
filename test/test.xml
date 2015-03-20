@@ -2,4 +2,11 @@
 	<pet type="dog">
 		<name>Fido</name>
 	</pet>
+	<pet type="cat">
+		<name>Mushu</name>
+		<age>2</age>
+	</pet>
+	<owner>
+		<name>John</name>
+	</owner>
 </pets>
