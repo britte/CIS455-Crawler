@@ -16,6 +16,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
+import edu.upenn.cis455.servlet.HttpClient;
 import edu.upenn.cis455.xpathengine.XPathEngineImpl;
 
 public class XPathEngineImplTest {
@@ -61,10 +62,7 @@ public class XPathEngineImplTest {
         DocumentBuilder builder = factory.newDocumentBuilder();
         File f = new File("test/test.xml");
         d = builder.parse(f);
-        
-        // Set up online document
-//        HttpClient client = new HttpClient("http://www.w3schools.com/xml/simple.xml");
-//        webd = client.getDoc();
+   
     }
  
 	
@@ -165,5 +163,24 @@ public class XPathEngineImplTest {
 		assertFalse(results[4]);
 		assertTrue(results[5]);
 		assertTrue(results[6]);
+	}
+	
+	@Test
+	public void evaluateTestWeb() throws IOException{
+        // Set up online document
+        HttpClient client = new HttpClient("http://www.w3schools.com/xml/note.xml");
+        webd = client.getDoc();
+        client.close();
+        
+		XPathEngineImpl x3 = new XPathEngineImpl();
+        String[] paths = new String[]{
+    		"/note/to" // basic steps
+        };
+        
+        
+        
+        x3.setXPaths(paths);
+		boolean[] results = x3.evaluate(webd);
+		assertTrue(results[0]);
 	}
 }
