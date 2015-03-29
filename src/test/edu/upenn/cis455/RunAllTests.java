@@ -7,7 +7,8 @@ import org.junit.runners.Suite;
 @Suite.SuiteClasses({
     // Class.forName("your.class.name.here") 
 	test.edu.upenn.cis455.XPathEngineImplTest.class,
-	test.edu.upenn.cis455.XPathServletTest.class
+//	test.edu.upenn.cis455.XPathServletTest.class, 
+	test.edu.upenn.cis455.XPathCrawlerTest.class
 })
 
 public class RunAllTests {

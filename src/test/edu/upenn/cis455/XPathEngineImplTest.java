@@ -143,8 +143,6 @@ public class XPathEngineImplTest {
 		Node root = d.getDocumentElement();
 		Node fido = root.getChildNodes().item(1);
 		
-		System.out.println(fido.getChildNodes().item(1).getTextContent());
-		
 		assertTrue("Text test: pet's name is Fido", x.compareTest("text()=\"Fido\"", fido.getChildNodes().item(1)));
 		assertTrue("Contains test: pet's name contains 'Fi'", x.compareTest("contains(text(), \"Fi\")", fido.getChildNodes().item(1)));
 		assertFalse("Contains test: pet's name doesn't contain 'x'", x.compareTest("contains(text(), \"x\")", fido.getChildNodes().item(1)));
@@ -176,8 +174,6 @@ public class XPathEngineImplTest {
         String[] paths = new String[]{
     		"/note/to" // basic steps
         };
-        
-        
         
         x3.setXPaths(paths);
 		boolean[] results = x3.evaluate(webd);

@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.PriorityQueue;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import edu.upenn.cis455.servlet.HttpClient;
 import edu.upenn.cis455.storage.Channel;
@@ -24,11 +27,64 @@ public class XPathCrawler {
 	private HashSet<String> seenUrls = new HashSet<String>();
 	
 	private void crawl() {
-		// Explore given document
-		// Find urls
-		// Parse out urls of interest
+		// Get a valid document off of the crawl queue
+		HttpClient client = null;
+		boolean validUrl = false;
 		
-		// Compare document with channels
+		while (!validUrl) {
+			String url = crawlUrls.poll();
+			if (url != null) {
+				client = new HttpClient(url);
+				validUrl = client.isValid();
+			} else {
+				break;
+			}
+		}
+		
+		if (!validUrl || client == null) { // the queue is empty
+			return;
+		} else {
+			Document d = client.getDoc();
+			// Compare document with tracked channels
+			compareChannels(d);
+			
+			// Explore given document
+			
+			// Find urls
+			// Parse out urls of interest
+			
+		}
+	}
+	
+	public void getUrls(Document d) {
+		if (d == null) return;
+		// Find all link elements (<a>)
+		NodeList links = d.getElementsByTagName("a");
+		
+		for (int i = 0; i < links.getLength(); i++) {
+	        Node link = links.item(i);
+	        if (link.getNodeType() == Node.ELEMENT_NODE) {
+	            // Get href and clean up
+	        	Element e = (Element) link;
+	        	String href = cleanUrl(e.getAttribute("href"));
+	        		        	
+	        	// If url is new, add it to the seen list and the crawl queue
+	        	if (!href.isEmpty() && !seenUrls.contains(href)) {
+	        		seenUrls.add(href);
+	        		crawlUrls.add(href);
+	        	}
+	        }
+	    }
+	}
+	
+	public String cleanUrl(String url) {
+		if (url == null) return url;
+		//TODO: implement
+		return url;
+	}
+	
+	public PriorityQueue getUrlQueue() {
+		return this.crawlUrls;
 	}
 	
 	private void compareChannels(Document d) {
@@ -37,6 +93,12 @@ public class XPathCrawler {
 	        Map.Entry channelEngine = (Map.Entry) it.next();
 	        XPathEngineImpl xpathEngine = (XPathEngineImpl) channelEngine.getValue();
 	        boolean[] match = xpathEngine.evaluate(d);
+	        for (int i=0; i < match.length; i++) {
+	        	if (match[i]) {
+	        		// Add channel --> document mapping
+	        		break;
+	        	}
+	        }
 	        it.remove(); 
 	    }
 	}
