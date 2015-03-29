@@ -16,10 +16,13 @@ public class XPathEngineImpl implements XPathEngine {
 		// Do NOT add arguments to the constructor!!
 	}
 	
+	// Set internal collection of xpaths
 	public void setXPaths(String[] s) {
 		this.xpaths = s;
 	}
 
+	// Given an index, determine if the associated xpath 
+	// has a valid format based on our grammar
 	public boolean isValid(int i) {
 		this.path = this.xpaths[i];
 		if (this.path.isEmpty()) return false;
@@ -28,17 +31,14 @@ public class XPathEngineImpl implements XPathEngine {
 			getNext();
 			axis();
 			path = null;
-//			System.out.println("----END ISVALID----");
-//			System.out.println("");
 			return true;
 		} catch (XPathException e) {
 			path = null;
-//			System.out.println("----END ISVALID----");
-//			System.out.println("");
 			return false;
 		}
 	}
 	
+	// Exception class to be thrown if xpath is malformed
 	private class XPathException extends Exception {
 	    public XPathException() {
 	        super("Invalid XPath");
@@ -49,17 +49,14 @@ public class XPathEngineImpl implements XPathEngine {
 	    }
 	}
 	
-	private void getNext() {
-		getNext(true);
-	}
-	
+	// Function to get the next character in the path
+	// Skips over whitespace or not based on argument
 	private void getNext(boolean whitespace) {
 		if (this.next == this.path.length()) {
 			this.next = -1; // end
 		} else {
 			this.c = this.path.charAt(this.next);
 			this.next += 1;
-//			System.out.println(this.c + " " + this.next);
 			// only ignore whitespace if "whitespace" is true
 			if (whitespace) {
 				if (Character.isWhitespace(this.c)) {
@@ -68,6 +65,36 @@ public class XPathEngineImpl implements XPathEngine {
 			}
 		}
 	}
+	
+	// Default value for getNext (skip whitespace)
+	private void getNext() {
+		getNext(true);
+	}
+	
+	// Checks for an expected "word"
+	// if the word is found, pointer is at the end of the word
+	// else the pointer is reset 
+	private boolean isNextWord(String[] words) {
+//		System.out.println("next word: " + words[0]);
+		int temp = this.next;
+		for (int w=0; w < words.length; w++) {
+			String word = words[w];
+			
+			// Read word (no whitespace allowed except after last character)
+			for (int i=0; i < word.length(); i++){
+				getNext(i == word.length() - 1); 
+				if (this.next == -1 || this.c != word.charAt(i)) {
+					this.next = temp;
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	
+	//
+	// Methods to parse different path components
+	//
 	
 	// axis --> '/'
 	private void axis() throws XPathException {
@@ -94,27 +121,6 @@ public class XPathEngineImpl implements XPathEngine {
 		else if (isNextWord(new String[]{"contains","(","text","(",")",",","\""})) contains();
 		else if (isNextWord(new String[]{"@"})) attr();
 		else step();
-	}
-	
-	// Checks for an expected "word"
-	// if the word is found, pointer is at the end of the word
-	// else the pointer is reset 
-	private boolean isNextWord(String[] words) {
-//		System.out.println("next word: " + words[0]);
-		int temp = this.next;
-		for (int w=0; w < words.length; w++) {
-			String word = words[w];
-			
-			// Read word (no whitespace allowed except after last character)
-			for (int i=0; i < word.length(); i++){
-				getNext(i == word.length() - 1); 
-				if (this.next == -1 || this.c != word.charAt(i)) {
-					this.next = temp;
-					return false;
-				}
-			}
-		}
-		return true;
 	}
 	
 	private void text() throws XPathException {
@@ -217,7 +223,7 @@ public class XPathEngineImpl implements XPathEngine {
 	
 	// Given a step, returns any tests within the step
 	public ArrayList<String> getTests(String step) {
-		// TODO: handle brackets within a string
+		// TODO: handle unmatched brackets within a string
 		ArrayList<String> tests = new ArrayList<String>();
 		
 		if (step.indexOf('[') != -1) {
@@ -248,6 +254,7 @@ public class XPathEngineImpl implements XPathEngine {
 		return tests;
 	}
 	
+	// Given a test string determine which type of grammar it is
 	private Test getTestType(String test) {
 		if (test.indexOf("text(") == 0) return Test.TEXT;
 		else if (test.indexOf("contains(") == 0) return Test.CONTAINS_TEXT;
@@ -258,11 +265,8 @@ public class XPathEngineImpl implements XPathEngine {
 	private enum Test {
 		TEXT, CONTAINS_TEXT, ATTRIBUTE, STEP;
 	}
-	
-	public boolean compare(String path, Node node) {
-		return compare(path, node, false);
-	}
-	
+		
+	// Recursively explores Document matching to the given xpath
 	public boolean compare(String path, Node node, boolean init){
 		// Get the next step in the given path
 		String[] stepPath = getStep(path);
@@ -313,6 +317,11 @@ public class XPathEngineImpl implements XPathEngine {
 		return true;
 	}
 	
+	public boolean compare(String path, Node node) {
+		return compare(path, node, false);
+	}
+	
+	// Checks if a given node satisfies a given test
 	public boolean compareTest(String t, Node node) {
 		switch(getTestType(t)) {
 		case TEXT: 

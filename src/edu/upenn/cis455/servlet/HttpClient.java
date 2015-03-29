@@ -43,6 +43,10 @@ public class HttpClient {
 		}
 	}
 	
+	public boolean isValid() {
+		return this.valid;
+	}
+	
 	public Document getDoc() {
 		// If an error occured trying to connect to the url, 
 		// no document can be created so return null
