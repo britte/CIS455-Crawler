@@ -71,51 +71,26 @@ public class HttpClient {
 		}
 	}
 	
-	public boolean isValid() {
-		return this.valid;
+	//
+	// Http Request and Response Handling
+	//
+	
+	private void sendHeadReq() {
+		String host = urlObj.getHost();
+		String path = urlObj.getFile();
+		out.println("HEAD " + path + " HTTP/1.1");
+		out.println("Host: " + host);
+		out.println();
+		out.flush();
 	}
 	
-	public Document getDoc() {
-		if (!valid) return null; // Don't read if connection failed
-		try {
-			
-			// Read through headers
-			sendGetReq();
-			readHead();
-			
-			// Don't read if status isn't 200
-			if (this.status != 200) return null;
-			
-			// If the document is of a valid type read in the body
-			if (isHtml()) { 
-				StringBuilder body = new StringBuilder();
-				long len = docLength;
-				while (len > 0) {
-					body.append((char) in.read());
-					len --;
-				}
-				// Clean the body into XHTML 
-				Tidy tidy = new Tidy();
-				tidy.setMakeClean(true);
-				tidy.setXHTML(true);
-				return tidy.parseDOM(new ByteArrayInputStream(body.toString().getBytes()), null);
-			} else if (isXml()) {
-				StringBuilder body = new StringBuilder();
-				long len = docLength;
-				while (len > 0) {
-					body.append((char) in.read());
-					len --;
-				}
-
-				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-				DocumentBuilder db = factory.newDocumentBuilder();
-				return db.parse(new ByteArrayInputStream(body.toString().getBytes()));
-			} else {
-				return null;
-			}
-		} catch (Exception e) {
-			return null;
-		}
+	private void sendGetReq() {
+		String host = urlObj.getHost();
+		String path = urlObj.getFile();
+		out.println("GET " + path + " HTTP/1.1");
+		out.println("Host: " + host);
+		out.println();
+		out.flush();
 	}
 	
 	private void readHead() {
@@ -164,22 +139,62 @@ public class HttpClient {
 		}
 	}
 	
-	private void sendGetReq() {
-		String host = urlObj.getHost();
-		String path = urlObj.getFile();
-		out.println("GET " + path + " HTTP/1.1");
-		out.println("Host: " + host);
-		out.println();
-		out.flush();
+	public Document getDoc() {
+		if (!valid) return null; // Don't read if connection failed
+		try {
+			
+			// Read through headers
+			sendGetReq();
+			readHead();
+			
+			// Don't read if status isn't 200
+			if (this.status != 200) return null;
+			
+			// If the document is of a valid type read in the body
+			if (isHtml()) { 
+				StringBuilder body = new StringBuilder();
+				long len = docLength;
+				while (len > 0) {
+					body.append((char) in.read());
+					len --;
+				}
+				// Clean the body into XHTML 
+				Tidy tidy = new Tidy();
+				tidy.setMakeClean(true);
+				tidy.setXHTML(true);
+				return tidy.parseDOM(new ByteArrayInputStream(body.toString().getBytes()), null);
+			} else if (isXml()) {
+				StringBuilder body = new StringBuilder();
+				long len = docLength;
+				while (len > 0) {
+					body.append((char) in.read());
+					len --;
+				}
+
+				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder db = factory.newDocumentBuilder();
+				return db.parse(new ByteArrayInputStream(body.toString().getBytes()));
+			} else {
+				return null;
+			}
+		} catch (Exception e) {
+			return null;
+		}
 	}
 	
-	private void sendHeadReq() {
-		String host = urlObj.getHost();
-		String path = urlObj.getFile();
-		out.println("HEAD " + path + " HTTP/1.1");
-		out.println("Host: " + host);
-		out.println();
-		out.flush();
+	public void close() throws IOException {
+		this.out.close();
+		this.in.close();
+		if (this.s != null) this.s.close();
+		if (this.conn != null) this.conn.disconnect();
+	}
+	
+	//
+	// Helpers to determine state of the document
+	//
+	
+	public boolean isValid() {
+		return this.valid;
 	}
 	
 	public boolean isHtml() {
@@ -191,14 +206,8 @@ public class HttpClient {
 								   docType.equals("application/xml") ||
 								   docType.endsWith("+xml"));
 	}
-	
-	// 
-	
-	public void close() throws IOException {
-		this.out.close();
-		this.in.close();
-		if (this.s != null) this.s.close();
-		if (this.conn != null) this.conn.disconnect();
-	}
 
+	public boolean modifiedSince(Date d) {
+		return this.lastModified == null || this.lastModified.after(d);
+	}
 }
