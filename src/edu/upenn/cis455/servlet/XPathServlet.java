@@ -9,6 +9,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
+import edu.upenn.cis455.httpclient.HttpClient;
+import edu.upenn.cis455.httpclient.HttpResponse;
 import edu.upenn.cis455.xpathengine.XPathEngine;
 import edu.upenn.cis455.xpathengine.XPathEngineFactory;
 
@@ -33,9 +35,9 @@ public class XPathServlet extends HttpServlet {
 			PrintWriter out = response.getWriter();
 			
 			// Try to get document
-			HttpClient client = new HttpClient(url);
-			Document d = client.getDoc();
-			client.close();
+			HttpClient client = new HttpClient();
+			HttpResponse res = client.getResponse(url, null);
+			Document d = res.getDoc();
 			
 			if (d == null) { // error connecting to server
 			    out.println("<html><head><title>XPath Servlet</title></head><body>");		    

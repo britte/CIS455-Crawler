@@ -1,5 +1,6 @@
 package edu.upenn.cis455.crawler;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,7 +13,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import edu.upenn.cis455.servlet.HttpClient;
+import edu.upenn.cis455.crawler.info.RobotsTxtInfo;
+import edu.upenn.cis455.httpclient.HttpClient;
+import edu.upenn.cis455.httpclient.HttpResponse;
 import edu.upenn.cis455.storage.Channel;
 import edu.upenn.cis455.storage.ChannelDB;
 import edu.upenn.cis455.storage.DBWrapper;
@@ -30,15 +33,17 @@ public class XPathCrawler {
 	private static int maxNumDocs = -1;
 	private static int docsDownloaded = 0;
 	
-	private static HttpClient currentClient;
+	private static HttpClient client = new HttpClient();
+	private static HttpResponse res;
 	
 	public XPathCrawler() {
 		channels = new HashMap<String, XPathEngineImpl>();
 		crawlUrls = new LinkedList<String>();
 		seenUrls = new HashSet<String>();
+		client = new HttpClient();
 	}
 		
-	public static void crawl() {
+	public static void crawl() throws IOException {
 		// Get a valid document off of the crawl queue
 		boolean validUrl = false;
 		String url = "";
@@ -46,29 +51,32 @@ public class XPathCrawler {
 		while (!validUrl) {
 			url = crawlUrls.poll();
 			if (url != null) {
-				currentClient = new HttpClient(url);
-				validUrl = currentClient.isValid();
+				res = client.getHead(url, null);
+				validUrl = (res != null);
 			} else {
 				break;
 			}
 		}
 		
-		if (!validUrl || currentClient == null) { // the queue is empty
+		if (!validUrl || res == null) { // the queue is empty
 			return;
-		} else if (currentClient.getDocLength() <= maxDocLength) {
+		} else if (res.getDocLength() <= maxDocLength) {
+			// TODO: robot check
+			RobotsTxtInfo robot = generateRobot();
 			// TODO: check if url has been modified since the last crawl
+			res = client.getResponse(url, null);
 			docsDownloaded += 1;
 			System.out.println(url + ": Downloading" + 
 								(maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
-			Document d = currentClient.getDoc();
-			if (currentClient.isXml()) {
+			Document d = res.getDoc();
+			if (res.isXml()) {
 				// If the current document is xml, check against tracked channels
 				compareChannels(d);
-			} else if (currentClient.isHtml()) {
+			} else if (res.isHtml()) {
 				// If the current document is html, explore it for unseen links
 				getUrls(d);
 			}	
-			currentClient = null;
+			res = null;
 		}
 	}
 	
@@ -96,8 +104,8 @@ public class XPathCrawler {
 	// Given an href url, return an expanded url based on whether
 	// it is absolute or relative
 	public static String cleanUrl(String url, Document d) {
-		if (currentClient == null || url == null) return null;
-		String baseUrl = currentClient.getBaseUrl(d);
+		if (res == null || url == null) return null;
+		String baseUrl = res.getBaseUrl();
 		if (url.indexOf("http://") != -1 || url.indexOf("https://") != -1) {
 			// absolute href 
 			return url;
@@ -108,22 +116,33 @@ public class XPathCrawler {
 		} else if (url.indexOf('/') == 0) {
 			// root relative path (format: "/path/subpath")
 			if (url.indexOf('.') != -1) { // file path
-				return currentClient.getRootUrl() + url.substring(1);	
+				return res.getRootUrl() + url.substring(1);	
 			} else { 
 				// ensure that a subpath that is NOT a file has a trailing "/"
 				if (!url.endsWith("/")) url = url + "/";
-				return currentClient.getRootUrl() + url.substring(1);
+				return res.getRootUrl() + url.substring(1);
 			}
 		} else {
 			// directory relative path (format "path/subpath")
 			if (url.indexOf('.') != -1) { // file path
-				return currentClient.getBaseUrl(d) + url;	
+				return res.getBaseUrl() + url;	
 			} else { 
 				// ensure that a subpath that is NOT a file has a trailing "/"
 				if (!url.endsWith("/")) url = url + "/";
-				return currentClient.getBaseUrl(d) + url;
+				return res.getBaseUrl() + url;
 			}
 		}
+	}
+	
+	public static RobotsTxtInfo generateRobot() throws IOException {
+		String robotUrl = res.getBaseUrl() + "robots.txt";
+		HttpResponse robotRes = client.getResponse(robotUrl, null);
+		
+		RobotsTxtInfo r = new RobotsTxtInfo();
+		if (robotRes == null) {
+			
+		}
+		return r;
 	}
 	
 	private static void compareChannels(Document d) {
@@ -199,8 +218,8 @@ public class XPathCrawler {
 		return this.crawlUrls;
 	}
 	
-	public void setCurrentClient(HttpClient c) {
-		this.currentClient = c;
+	public void setCurrentResponse(HttpResponse res) {
+		this.res = res;
 	}
 	
 	public void setMaxDocLength(long len) {

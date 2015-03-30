@@ -16,7 +16,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
-import edu.upenn.cis455.servlet.HttpClient;
+import edu.upenn.cis455.httpclient.HttpClient;
+import edu.upenn.cis455.httpclient.HttpResponse;
 import edu.upenn.cis455.xpathengine.XPathEngineImpl;
 
 public class XPathEngineImplTest {
@@ -166,8 +167,9 @@ public class XPathEngineImplTest {
 	@Test
 	public void evaluateTestWeb() throws IOException{
         // Set up online document
-        HttpClient client = new HttpClient("http://www.w3schools.com/xml/note.xml");
-        webd = client.getDoc();
+        HttpClient client = new HttpClient();
+        HttpResponse res = client.getResponse("http://www.w3schools.com/xml/note.xml", null);
+        webd = res.getDoc();
         client.close();
         
 		XPathEngineImpl x3 = new XPathEngineImpl();

@@ -1,4 +1,4 @@
-package edu.upenn.cis455.servlet;
+package edu.upenn.cis455.httpclient;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -34,16 +34,55 @@ public class HttpClient {
 	private HttpsURLConnection conn; // only for https
 	private BufferedReader in;
 	private PrintWriter out;
+	
 	private URL urlObj;
 	
-	private boolean valid = true;
+	public HttpClient() {}
+
+	public HttpResponse getHead(String url, Date lastCrawled) throws IOException {
+		try {
+			// Try to establish a connection
+			if (!connect(url)) return null;
+			
+			// Send head request
+			sendHeadReq(lastCrawled);
+			
+			// Read in response
+			HttpResponse res = readHeadResponse();
+			
+			// Close and clean client
+			close();
+			
+			return res;
+		} catch (Exception e){
+			close();
+			return null;
+		}
+	}
 	
-	private int status;
-	private Long docLength;
-	private String docType;
-	private Date lastModified;
+	public HttpResponse getResponse(String url, Date lastCrawled) throws IOException {
+		try {
+			// Try to establish a connection
+			if (!connect(url)) return null;
+			
+			// Send get request
+			sendGetReq(lastCrawled);
+			
+			// Read in response
+			HttpResponse res = readFullResponse();
+			
+			// Close and clean client
+			close();
+			
+			return res;
+		} catch (Exception e){
+			close();
+			return null;
+		}
+	}
 	
-	public HttpClient(String url) {		
+	// Given a url, try to establish a connection
+	private boolean connect(String url) {
 		try {
 			urlObj = new URL(url);
 			if (urlObj.getProtocol().equals("http")) {
@@ -51,26 +90,23 @@ public class HttpClient {
 				InetAddress addr = InetAddress.getByName(urlObj.getHost());
 				this.s = new Socket(addr, 80);
 				this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(s.getOutputStream())));
-				this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));				
+				this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));	
+				return true;
 			} else if (urlObj.getProtocol().equals("https")){
 				// HTTPS connection
 				this.conn = (HttpsURLConnection) urlObj.openConnection();
 				conn.setDoOutput(true);
 				this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(conn.getOutputStream())));
 				this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				return true;
 			} else {
 				// Invalid connection
-				valid = false; 
-				return;
+				return false;
 			}
-			
-			// After establishing connection, send HEAD request
-			sendHeadReq();
-			readHead();
 			
 		} catch (IOException e){
 			System.out.println(e);
-			valid = false;
+			return false;
 		}
 	}
 	
@@ -78,7 +114,7 @@ public class HttpClient {
 	// Http Request and Response Handling
 	//
 	
-	private void sendHeadReq() {
+	private void sendHeadReq(Date lastCrawled) {
 		String host = urlObj.getHost();
 		String path = urlObj.getFile();
 		out.println("HEAD " + path + " HTTP/1.1");
@@ -88,7 +124,7 @@ public class HttpClient {
 		out.flush();
 	}
 	
-	private void sendGetReq() {
+	private void sendGetReq(Date lastCrawled) {
 		String host = urlObj.getHost();
 		String path = urlObj.getFile();
 		out.println("GET " + path + " HTTP/1.1");
@@ -98,67 +134,66 @@ public class HttpClient {
 		out.flush();
 	}
 	
-	private void readHead() {
-		if (!valid) return; // Don't read if connection failed
+	private HttpResponse readHeadResponse() throws IOException {
 		try {
+			
+			int status;
+			String contentType = null;
+			Long contentLength = null;
+			
 			if (this.s != null) {
 				// If reading through a Socket, header information is part of the input stream
 				String line = in.readLine();
-				if (line == null) return;
+				if (line == null) return null;
 				
 				// Check the response status
-				this.status = Integer.parseInt(line.split(" ")[1]);
+				status = Integer.parseInt(line.split(" ")[1]);
 				
 				// Read through headers and check for important ones
 				while (!line.isEmpty()) {
 //					System.out.println(line);
 					if (line.indexOf("Content-Length") != -1) {
-						this.docLength = Long.parseLong(line.substring(line.indexOf(":") + 1).trim());
+						contentLength = Long.parseLong(line.substring(line.indexOf(":") + 1).trim());
 					} else if (line.indexOf("Content-Type") != -1) {
 						int end = line.indexOf(';');
 						if (end != -1) {
-							this.docType = line.substring(line.indexOf(":") + 1, end).trim();
+							contentType = line.substring(line.indexOf(":") + 1, end).trim();
 						} else {
-							this.docType = line.substring(line.indexOf(":") + 1).trim();
+							contentType = line.substring(line.indexOf(":") + 1).trim();
 						}
-					} else if (line.indexOf("Last-Modified") != -1) {
-						SimpleDateFormat format = new SimpleDateFormat("EEE, d MMM YYYY HH:mm:ss z");
-						this.lastModified = format.parse(line.substring(line.indexOf(":") + 1).trim());
 					}
 					line = in.readLine();
 				}
+				return new HttpResponse(this.urlObj, status, contentLength, contentType);
 			} else {
 				// If reading through a URLConnection, header information is part of the connection
-				this.status = this.conn.getResponseCode();
+				status = this.conn.getResponseCode();
 				
-				this.docLength = this.conn.getContentLengthLong();
+				contentLength = this.conn.getContentLengthLong();
 				
-				this.docType = this.conn.getContentType();
-				int semi = this.docType.indexOf(";");
-				if (semi != -1) this.docType = this.docType.substring(0, semi);
+				contentType = this.conn.getContentType();
+				int semi = contentType.indexOf(";");
+				if (semi != -1) contentType = contentType.substring(0, semi);
 				
-				this.lastModified = new Date(this.conn.getLastModified());
+				return new HttpResponse(this.urlObj, status, contentLength, contentType);
 			}
 		} catch (Exception e) {
-			return;
-		}
+			return null;
+		} 
 	}
 	
-	public Document getDoc() {
-		if (!valid) return null; // Don't read if connection failed
+	private HttpResponse readFullResponse() throws IOException {
 		try {
-			
-			// Read through headers
-			sendGetReq();
-			readHead();
+			// Read through headers 
+			HttpResponse res = readHeadResponse();
 			
 			// Don't read if status isn't 200
-			if (this.status != 200) return null;
+			if (res.getStatus() != 200) return null;
 			
 			// If the document is of a valid type read in the body
-			if (isHtml()) { 
+			if (res.isHtml()) { 
 				StringBuilder body = new StringBuilder();
-				long len = docLength;
+				long len = res.getDocLength();
 				while (len > 0) {
 					body.append((char) in.read());
 					len --;
@@ -168,10 +203,11 @@ public class HttpClient {
 				tidy.setMakeClean(true);
 				tidy.setShowWarnings(false);
 				tidy.setXHTML(true);
-				return tidy.parseDOM(new ByteArrayInputStream(body.toString().getBytes()), null);
-			} else if (isXml()) {
+				res.setDocument(tidy.parseDOM(new ByteArrayInputStream(body.toString().getBytes()), null));
+				return res;
+			} else if (res.isXml()) {
 				StringBuilder body = new StringBuilder();
-				long len = docLength;
+				long len = res.getDocLength();
 				while (len > 0) {
 					body.append((char) in.read());
 					len --;
@@ -179,13 +215,14 @@ public class HttpClient {
 
 				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 				DocumentBuilder db = factory.newDocumentBuilder();
-				return db.parse(new ByteArrayInputStream(body.toString().getBytes()));
+				res.setDocument(db.parse(new ByteArrayInputStream(body.toString().getBytes())));
+				return res;
 			} else {
 				return null;
 			}
 		} catch (Exception e) {
 			return null;
-		}
+		} 
 	}
 	
 	public void close() throws IOException {
@@ -195,53 +232,4 @@ public class HttpClient {
 		if (this.conn != null) this.conn.disconnect();
 	}
 	
-	//
-	// Helpers to determine state of the document
-	//
-	
-	public boolean isValid() {
-		return this.valid;
-	}
-	
-	public boolean isHtml() {
-		return docType != null && docType.equals("text/html");
-	}
-	
-	public boolean isXml() {
-		return docType != null && (docType.equals("text/xml") ||
-								   docType.equals("application/xml") ||
-								   docType.endsWith("+xml"));
-	}
-
-	public boolean modifiedSince(Date d) {
-		return this.lastModified == null || this.lastModified.after(d);
-	}
-	
-	// Return the base url for the page
-	public String getBaseUrl(Document d) {
-		if (!this.isValid()) return null;
-		NodeList base = d.getElementsByTagName("base");
-		if (base != null && base.getLength() > 0 && base.item(0).getNodeType() == Node.ELEMENT_NODE) {
-			// If the document contains a base element return the referenced base
-			Element baseElem = (Element) base.item(0);
-			return baseElem.getAttribute("href");
-		} else {
-			// If there is no base element the base is the directory of the current page
-			String protocol = this.urlObj.getProtocol() + "://";
-			String authority = this.urlObj.getAuthority();
-			String path = this.urlObj.getPath();
-			int lastSlash = path.lastIndexOf('/');
-			if (lastSlash != -1) path = path.substring(0, lastSlash + 1);
-			return protocol + authority + path;
-		}
-	}
-	
-	// Return the root url for the page
-	public String getRootUrl() {
-		return this.urlObj.getProtocol() + "://" + this.urlObj.getAuthority() + "/";
-	}
-	
-	public long getDocLength() {
-		return this.docLength;
-	}
 }

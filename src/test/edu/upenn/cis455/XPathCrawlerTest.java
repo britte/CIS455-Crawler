@@ -2,6 +2,7 @@ package test.edu.upenn.cis455;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.PriorityQueue;
@@ -11,7 +12,8 @@ import org.junit.Test;
 import org.w3c.dom.Document;
 
 import edu.upenn.cis455.crawler.XPathCrawler;
-import edu.upenn.cis455.servlet.HttpClient;
+import edu.upenn.cis455.httpclient.HttpClient;
+import edu.upenn.cis455.httpclient.HttpResponse;
 
 
 public class XPathCrawlerTest {
@@ -24,31 +26,34 @@ public class XPathCrawlerTest {
     }
  
 	@Test
-	public void testGetUrlsHttp() {
-		HttpClient client = new HttpClient("http://www.junumusic.com/");
-		Document d = client.getDoc();
+	public void testGetUrlsHttp() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("http://www.junumusic.com/", null);
+		Document d = res.getDoc();
 		
-		crawler.setCurrentClient(client);
+		crawler.setCurrentResponse(res);
 		crawler.getUrls(d);
 		assertEquals(crawler.getUrlQueue().size(), 15);
 	}
 	
 	@Test
-	public void testGetUrlsHttps() {
-		HttpClient client = new HttpClient("https://dbappserv.cis.upenn.edu/crawltest.html");
-		Document d = client.getDoc();
+	public void testGetUrlsHttps() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html", null);
+		Document d = res.getDoc();
 		
-		crawler.setCurrentClient(client);
+		crawler.setCurrentResponse(res);
 		crawler.getUrls(d);
 		assertEquals(crawler.getUrlQueue().size(), 9);
 	}
 	
 	@Test
-	public void testCleanUrl() {		
-		HttpClient client = new HttpClient("https://dbappserv.cis.upenn.edu/crawltest/");
-		Document d = client.getDoc();
+	public void testCleanUrl() throws IOException {		
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/", null);
+		Document d = res.getDoc();
 		
-		crawler.setCurrentClient(client);
+		crawler.setCurrentResponse(res);
 		
 		assertEquals(crawler.cleanUrl("http://test.com", d), "http://test.com");
 		assertEquals(crawler.cleanUrl("nytimes/", d), "https://dbappserv.cis.upenn.edu/crawltest/nytimes/");
@@ -56,12 +61,12 @@ public class XPathCrawlerTest {
 	}
 	
 	@Test
-	public void testMaxDocSize() {		
-		HttpClient client = new HttpClient("https://dbappserv.cis.upenn.edu/crawltest/");
-		Document d = client.getDoc();
+	public void testMaxDocSize() throws IOException {		
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/", null);
+		Document d = res.getDoc();
 		
-		crawler.setCurrentClient(client);
-//		crawler.setMaxDocLength(1);
+		crawler.setCurrentResponse(res);
 		
 		assertEquals(crawler.cleanUrl("http://test.com", d), "http://test.com");
 		assertEquals(crawler.cleanUrl("nytimes/", d), "https://dbappserv.cis.upenn.edu/crawltest/nytimes/");

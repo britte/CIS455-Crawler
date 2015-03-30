@@ -2,72 +2,84 @@ package test.edu.upenn.cis455;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
+
 import org.junit.Test;
 import org.w3c.dom.Document;
 
-import edu.upenn.cis455.servlet.HttpClient;
+import edu.upenn.cis455.httpclient.HttpClient;
+import edu.upenn.cis455.httpclient.HttpResponse;
 
 public class HttpClientTest {
 
 	@Test
-	public void testHttp() {
-		HttpClient client = new HttpClient("http://www.junumusic.com/");
+	public void testHttp() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("http://www.junumusic.com/", null);
 		
-		assertTrue(client.isValid());
-		assertTrue(client.isHtml());
+		assertNotNull(res);
+		assertTrue(res.isHtml());
 		
-		Document d = client.getDoc();
+		Document d = res.getDoc();
 		assertNotNull(d);
 	}
 	
 	@Test
-	public void testHttps() {
-		HttpClient client = new HttpClient("https://dbappserv.cis.upenn.edu/crawltest.html");
-		assertTrue(client.isValid());
-		assertTrue(client.isHtml());
+	public void testHttps() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html", null);
 		
-		Document d = client.getDoc();
+		assertNotNull(res);
+		assertTrue(res.isHtml());
+		
+		Document d = res.getDoc();
 		assertNotNull(d);
 	}
 	
 	@Test
-	public void testGetRelativeUrlsHasBaseElem() {
-		HttpClient client = new HttpClient("http://www.w3schools.com/tags/tryhtml_base_test.htm");
-		assertTrue(client.isValid());
-		assertTrue(client.isHtml());
+	public void testGetRelativeUrlsHasBaseElem() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("http://www.w3schools.com/tags/tryhtml_base_test.htm", null);
 		
-		Document d = client.getDoc();
+		assertNotNull(res);
+		assertTrue(res.isHtml());
+		
+		Document d = res.getDoc();
 		assertNotNull(d);
 
-		assertEquals(client.getRootUrl(), "http://www.w3schools.com/");
-		assertEquals(client.getBaseUrl(d), "http://www.w3schools.com/images/");
+		assertEquals(res.getRootUrl(), "http://www.w3schools.com/");
+		assertEquals(res.getBaseUrl(), "http://www.w3schools.com/images/");
 	}
 	
 	@Test
-	public void testGetBaseUrlNoBaseElem1() {
-		HttpClient client = new HttpClient("https://dbappserv.cis.upenn.edu/crawltest.html");
-		assertTrue(client.isValid());
-		assertTrue(client.isHtml());
+	public void testGetBaseUrlNoBaseElem1() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html", null);
 		
-		Document d = client.getDoc();
+		assertNotNull(res);
+		assertTrue(res.isHtml());
+		
+		Document d = res.getDoc();
 		assertNotNull(d);
 
-		assertEquals(client.getRootUrl(), "https://dbappserv.cis.upenn.edu/");
-		assertEquals(client.getBaseUrl(d), "https://dbappserv.cis.upenn.edu/");
+		assertEquals(res.getRootUrl(), "https://dbappserv.cis.upenn.edu/");
+		assertEquals(res.getBaseUrl(), "https://dbappserv.cis.upenn.edu/");
 	}
 	
 	
 	@Test
-	public void testGetBaseUrlNoBaseElem2() {
-		HttpClient client = new HttpClient("https://dbappserv.cis.upenn.edu/crawltest/marie/tpc/");
-		assertTrue(client.isValid());
-		assertTrue(client.isHtml());
+	public void testGetBaseUrlNoBaseElem2() throws IOException {
+		HttpClient client = new HttpClient();
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/marie/tpc/", null);
 		
-		Document d = client.getDoc();
+		assertNotNull(res);
+		assertTrue(res.isHtml());
+		
+		Document d = res.getDoc();
 		assertNotNull(d);
 
-		assertEquals(client.getRootUrl(), "https://dbappserv.cis.upenn.edu/");
-		assertEquals(client.getBaseUrl(d), "https://dbappserv.cis.upenn.edu/crawltest/marie/tpc/");
+		assertEquals(res.getRootUrl(), "https://dbappserv.cis.upenn.edu/");
+		assertEquals(res.getBaseUrl(), "https://dbappserv.cis.upenn.edu/crawltest/marie/tpc/");
 	}
 	
 }
