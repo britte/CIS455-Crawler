@@ -12,12 +12,23 @@ public class RobotsTxtInfo {
 	private ArrayList<String> sitemapLinks;
 	private ArrayList<String> userAgents;
 	
+	private String rootUrl; 
+	
 	public RobotsTxtInfo(){
 		disallowedLinks = new HashMap<String,ArrayList<String>>();
 		allowedLinks = new HashMap<String,ArrayList<String>>();
 		crawlDelays = new HashMap<String,Integer>();
 		sitemapLinks = new ArrayList<String>();
 		userAgents = new ArrayList<String>();
+	}
+	
+	public RobotsTxtInfo(String url){
+		disallowedLinks = new HashMap<String,ArrayList<String>>();
+		allowedLinks = new HashMap<String,ArrayList<String>>();
+		crawlDelays = new HashMap<String,Integer>();
+		sitemapLinks = new ArrayList<String>();
+		userAgents = new ArrayList<String>();
+		rootUrl = url;
 	}
 	
 	public void addDisallowedLink(String key, String value){
@@ -69,13 +80,17 @@ public class RobotsTxtInfo {
 	public ArrayList<String> getDisallowedLinks(String key){
 		return disallowedLinks.get(key);
 	}
-	
+		
 	public ArrayList<String> getAllowedLinks(String key){
 		return allowedLinks.get(key);
 	}
 	
 	public int getCrawlDelay(String key){
 		return crawlDelays.get(key);
+	}
+	
+	public String getRootUrl() {
+		return rootUrl;
 	}
 	
 	public void print(){
@@ -102,5 +117,25 @@ public class RobotsTxtInfo {
 	
 	public boolean crawlContainAgent(String key){
 		return crawlDelays.containsKey(key);
+	}
+	
+	public boolean checkLink(String key, String link) {
+		ArrayList<String> allowed = getAllowedLinks(key);
+		ArrayList<String> disallowed = getDisallowedLinks(key);
+		
+		String path = link.substring(rootUrl.length() - 1);
+		
+		for (int i=0; i < disallowed.size(); i++) {
+			String dLink = disallowed.get(i);
+			if (path.startsWith(dLink)) {
+				//TODO: build in contradictions
+//				for (int j=0; j < allowed.size(); j++ ) {
+//					String aLink = allowed.get(j);
+//					if (path.startsWith(aLink) && aLink.length() <= ) return true; 
+//				}
+				return false;
+			}
+		}
+		return true;
 	}
 }

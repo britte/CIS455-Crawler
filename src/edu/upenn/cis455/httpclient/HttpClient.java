@@ -1,5 +1,7 @@
 package edu.upenn.cis455.httpclient;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
@@ -28,6 +30,8 @@ import org.w3c.dom.NodeList;
 import org.w3c.tidy.Tidy;
 import org.xml.sax.SAXException;
 
+import edu.upenn.cis455.crawler.info.RobotsTxtInfo;
+
 public class HttpClient {
 	
 	private Socket s; // only for http
@@ -41,20 +45,19 @@ public class HttpClient {
 
 	public HttpResponse getHead(String url, Date lastCrawled) throws IOException {
 		try {
-			// Try to establish a connection
-			if (!connect(url)) return null;
-			
 			// Send head request
+			if (!connect(url, false)) return null;
 			sendHeadReq(lastCrawled);
-			
+			close();
+
 			// Read in response
+			if (!connect(url, true)) return null;
 			HttpResponse res = readHeadResponse();
-			
-			// Close and clean client
 			close();
 			
 			return res;
 		} catch (Exception e){
+			e.printStackTrace();
 			close();
 			return null;
 		}
@@ -62,50 +65,77 @@ public class HttpClient {
 	
 	public HttpResponse getResponse(String url, Date lastCrawled) throws IOException {
 		try {
-			// Try to establish a connection
-			if (!connect(url)) return null;
 			
 			// Send get request
+			if (!connect(url, false)) return null;
 			sendGetReq(lastCrawled);
+			close();
 			
 			// Read in response
+			if (!connect(url, true)) return null;
 			HttpResponse res = readFullResponse();
-			
-			// Close and clean client
 			close();
 			
 			return res;
 		} catch (Exception e){
+			e.printStackTrace();
 			close();
 			return null;
 		}
 	}
 	
-	// Given a url, try to establish a connection
-	private boolean connect(String url) {
+	public RobotsTxtInfo getRobot(String rootUrl) throws IOException {
+		try {
+			// Send get request
+			if (!connect(rootUrl + "robots.txt", false)) return null;
+			sendGetReq(null);
+			close();
+			
+			// Read in headers & robot file
+			if (!connect(rootUrl + "robots.txt", true)) return null;
+			HttpResponse res = readHeadResponse();
+			RobotsTxtInfo robot = readRobotResponse(rootUrl, res.getDocLength());
+			close();
+			return robot;
+		} catch (Exception e) {
+			e.printStackTrace();
+			close();
+			return null;
+		}
+	}
+	
+	// Given a url, try to establish a connection in or out
+	private boolean connect(String url, boolean in) {
 		try {
 			urlObj = new URL(url);
 			if (urlObj.getProtocol().equals("http")) {
 				// HTTP connection 
 				InetAddress addr = InetAddress.getByName(urlObj.getHost());
 				this.s = new Socket(addr, 80);
-				this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(s.getOutputStream())));
-				this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));	
+				if (in) {
+					this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));	
+				} else {
+					this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(s.getOutputStream())));
+				}
 				return true;
 			} else if (urlObj.getProtocol().equals("https")){
 				// HTTPS connection
 				this.conn = (HttpsURLConnection) urlObj.openConnection();
-				conn.setDoOutput(true);
-				this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(conn.getOutputStream())));
-				this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				if (in) {
+					this.conn.setDoInput(true);
+					this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				} else {
+					this.conn.setDoOutput(true);
+					this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(conn.getOutputStream())));
+				}
 				return true;
 			} else {
 				// Invalid connection
 				return false;
 			}
 			
-		} catch (IOException e){
-			System.out.println(e);
+		} catch (Exception e){
+			e.printStackTrace();
 			return false;
 		}
 	}
@@ -114,7 +144,7 @@ public class HttpClient {
 	// Http Request and Response Handling
 	//
 	
-	private void sendHeadReq(Date lastCrawled) {
+	private void sendHeadReq(Date lastCrawled) throws IOException {
 		String host = urlObj.getHost();
 		String path = urlObj.getFile();
 		out.println("HEAD " + path + " HTTP/1.1");
@@ -151,7 +181,6 @@ public class HttpClient {
 				
 				// Read through headers and check for important ones
 				while (!line.isEmpty()) {
-//					System.out.println(line);
 					if (line.indexOf("Content-Length") != -1) {
 						contentLength = Long.parseLong(line.substring(line.indexOf(":") + 1).trim());
 					} else if (line.indexOf("Content-Type") != -1) {
@@ -174,7 +203,6 @@ public class HttpClient {
 				contentType = this.conn.getContentType();
 				int semi = contentType.indexOf(";");
 				if (semi != -1) contentType = contentType.substring(0, semi);
-				
 				return new HttpResponse(this.urlObj, status, contentLength, contentType);
 			}
 		} catch (Exception e) {
@@ -225,9 +253,40 @@ public class HttpClient {
 		} 
 	}
 	
+	private RobotsTxtInfo readRobotResponse(String rootUrl, long len) throws IOException {
+		RobotsTxtInfo r = new RobotsTxtInfo(rootUrl);
+
+		String agent = null;
+		String line = "";
+		while (len > 0) {
+			line = in.readLine();
+			if (line.indexOf("User-agent") != -1) {
+				// User-agent line
+				agent = line.substring(line.indexOf(':') + 1).trim();
+				r.addUserAgent(agent);
+			} else if (line.indexOf("Disallow") != -1) {
+				// Disallow line
+				String path = line.substring(line.indexOf(':') + 1).trim();
+				r.addDisallowedLink(agent, path);
+			} else if (line.indexOf("Allow") != -1) {
+				// Allow line
+				String path = line.substring(line.indexOf(':') + 1).trim();
+				r.addAllowedLink(agent, path);
+			} else if (line.indexOf("Crawl-delay") != -1) {
+				// Delay line
+				int delay = Integer.parseInt(line.substring(line.indexOf(':') + 1).trim());
+				r.addCrawlDelay(agent, delay);
+			}
+			if (!line.isEmpty()) len -= (line.length() + 1);
+			else len -= 1;
+		}
+		
+		return r;
+	}
+	
 	public void close() throws IOException {
-		this.out.close();
-		this.in.close();
+		if (this.out != null) this.out.close();
+		if (this.in != null) this.in.close();
 		if (this.s != null) this.s.close();
 		if (this.conn != null) this.conn.disconnect();
 	}

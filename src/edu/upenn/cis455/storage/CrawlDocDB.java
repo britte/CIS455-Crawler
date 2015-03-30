@@ -27,4 +27,15 @@ public class CrawlDocDB {
 			return true;
 		}
 	}
+	
+	// Inserts a doc into the store if it doesn't already exist
+	// Returns true if doc was inserted, false if if existed already
+	public boolean insertCrawlDoc(String url, CrawlDoc doc) {
+		if (docByUrl.contains(url)) {
+			return false;
+		} else {
+			docByUrl.put(doc);
+			return true;
+		}
+	}
 }

@@ -57,14 +57,22 @@ public class HttpResponse {
 	
 	// Return the base url for the page
 	public String getBaseUrl() {
-		if (this.d == null) return null;
-		NodeList base = d.getElementsByTagName("base");
-		if (base != null && base.getLength() > 0 && base.item(0).getNodeType() == Node.ELEMENT_NODE) {
-			// If the document contains a base element return the referenced base
-			Element baseElem = (Element) base.item(0);
-			return baseElem.getAttribute("href");
+		if (this.d != null) {
+			NodeList base = d.getElementsByTagName("base");
+			if (base != null && base.getLength() > 0 && base.item(0).getNodeType() == Node.ELEMENT_NODE) {
+				// If the document contains a base element return the referenced base
+				Element baseElem = (Element) base.item(0);
+				return baseElem.getAttribute("href");
+			} else {
+				// If there is no base element the base is the directory of the current page
+				String protocol = this.url.getProtocol() + "://";
+				String authority = this.url.getAuthority();
+				String path = this.url.getPath();
+				int lastSlash = path.lastIndexOf('/');
+				if (lastSlash != -1) path = path.substring(0, lastSlash + 1);
+				return protocol + authority + path;
+			}
 		} else {
-			// If there is no base element the base is the directory of the current page
 			String protocol = this.url.getProtocol() + "://";
 			String authority = this.url.getAuthority();
 			String path = this.url.getPath();
@@ -72,6 +80,7 @@ public class HttpResponse {
 			if (lastSlash != -1) path = path.substring(0, lastSlash + 1);
 			return protocol + authority + path;
 		}
+		
 	}
 	
 	// Return the root url for the page

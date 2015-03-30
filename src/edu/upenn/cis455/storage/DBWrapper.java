@@ -18,6 +18,7 @@ public class DBWrapper {
 	
 	private static UserDB userDB;
 	private static ChannelDB channelDB; 
+	private static CrawlDocDB crawlDB;
 	
 	public DBWrapper(String envDir) throws Exception {
 		
@@ -27,12 +28,14 @@ public class DBWrapper {
 		
 		this.userDB = new UserDB(this.store);
 		this.channelDB = new ChannelDB(this.store);
+		this.crawlDB = new CrawlDocDB(this.store);
 	}
 	
 	public Environment getEnvironment() { return this.myEnv; }
 	public EntityStore getStore() { return this.store; }
 	public UserDB getUserDB() { return this.userDB; }
 	public ChannelDB getChannelDB() { return this.channelDB; }
+	public CrawlDocDB getCrawlDocDB() { return this.crawlDB; }
 	
 	public void setup() {
 		
