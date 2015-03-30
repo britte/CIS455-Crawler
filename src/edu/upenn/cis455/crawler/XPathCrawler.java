@@ -28,6 +28,7 @@ public class XPathCrawler {
 	
 	private static long maxDocLength;
 	private static int maxNumDocs = -1;
+	private static int docsDownloaded = 0;
 	
 	private static HttpClient currentClient;
 	
@@ -56,7 +57,9 @@ public class XPathCrawler {
 			return;
 		} else if (currentClient.getDocLength() <= maxDocLength) {
 			// TODO: check if url has been modified since the last crawl
-			System.out.println(url + ": Downloading");
+			docsDownloaded += 1;
+			System.out.println(url + ": Downloading" + 
+								(maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
 			Document d = currentClient.getDoc();
 			if (currentClient.isXml()) {
 				// If the current document is xml, check against tracked channels
@@ -142,6 +145,7 @@ public class XPathCrawler {
 	private static void setUpChannels(DBWrapper db) {
     	ChannelDB channelDB = db.getChannelDB();
     	ArrayList<Channel> cs = channelDB.getallChannels();
+		System.out.println("Total channels: " + cs.size());
 		// Create map from each channel's name --> XPathEngine for its xpaths
 		for (int i=0; i< cs.size(); i++) {
 			Channel c = cs.get(i);
@@ -177,7 +181,7 @@ public class XPathCrawler {
 				if (args.length == 4) maxNumDocs = Integer.parseInt(args[3]);
 				
 				// Start the crawler
-				while (!crawlUrls.isEmpty() && (maxNumDocs == -1 || seenUrls.size() < maxNumDocs)) {
+				while (!crawlUrls.isEmpty() && (maxNumDocs == -1 || docsDownloaded < maxNumDocs)) {
 					crawl();
 				}
 				

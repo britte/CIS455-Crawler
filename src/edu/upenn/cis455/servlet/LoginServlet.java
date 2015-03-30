@@ -26,7 +26,8 @@ public class LoginServlet extends HttpServlet {
 	    
 	    try {
 		    // Set up DB
-	    	UserDB db = createDB(getServletContext().getInitParameter("BDBstore")).getUserDB();
+	    	DBWrapper db = createDB(getServletContext().getInitParameter("BDBstore"));
+	    	UserDB userDB = db.getUserDB();
 	    	
 	    	// Get login params
 		    String email = request.getParameter("email").trim();
@@ -44,7 +45,9 @@ public class LoginServlet extends HttpServlet {
 				if (c.getName().equals("cis455session")) loggedIn = true;
 			}
 			
-			User usr = db.getUserByEmail(email);	
+			User usr = userDB.getUserByEmail(email);	
+			db.close();
+			
 			boolean loginSuccess = (usr != null && usr.getPwd().equals(pwd));
 			
 			if (loggedIn || !loginSuccess) { 

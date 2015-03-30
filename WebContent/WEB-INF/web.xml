@@ -9,7 +9,7 @@
    
    <context-param>
      <param-name>BDBstore</param-name>
-     <param-value>Desktop/database</param-value>
+     <param-value>workspace/HW2/database</param-value>
    </context-param>
     
    <servlet>

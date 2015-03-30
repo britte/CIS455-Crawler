@@ -5,10 +5,10 @@ import java.util.HashMap;
 
 public class RobotsTxtInfo {
 	
-	private HashMap<String,ArrayList<String>> disallowedLinks;
-	private HashMap<String,ArrayList<String>> allowedLinks;
+	private HashMap<String,ArrayList<String>> disallowedLinks; // agent, links
+	private HashMap<String,ArrayList<String>> allowedLinks; // agent, links
 	
-	private HashMap<String,Integer> crawlDelays;
+	private HashMap<String,Integer> crawlDelays; // agent, delays
 	private ArrayList<String> sitemapLinks;
 	private ArrayList<String> userAgents;
 	

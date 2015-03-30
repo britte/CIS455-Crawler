@@ -20,19 +20,10 @@ public class DBWrapper {
 	private static ChannelDB channelDB; 
 	
 	public DBWrapper(String envDir) throws Exception {
+		
 		this.envDirectory = envDir;
 		
-		EnvironmentConfig envConfig = new EnvironmentConfig();
-		envConfig.setAllowCreate(true);
-		File f = new File(envDir);
-		if (!f.exists()) {
-			f.mkdir();
-		}
-		this.myEnv = new Environment(new File(envDir), envConfig);
-		
-		StoreConfig storeConfig = new StoreConfig();
-		storeConfig.setAllowCreate(true);
-		this.store = new EntityStore(this.myEnv, "", storeConfig);
+		setup();
 		
 		this.userDB = new UserDB(this.store);
 		this.channelDB = new ChannelDB(this.store);
@@ -42,6 +33,23 @@ public class DBWrapper {
 	public EntityStore getStore() { return this.store; }
 	public UserDB getUserDB() { return this.userDB; }
 	public ChannelDB getChannelDB() { return this.channelDB; }
+	
+	public void setup() {
+		
+		EnvironmentConfig envConfig = new EnvironmentConfig();
+		envConfig.setTransactional(true);
+		envConfig.setAllowCreate(true);
+		File f = new File(this.envDirectory);
+		if (!f.exists()) {
+			f.mkdir();
+		}
+		this.myEnv = new Environment(new File(this.envDirectory), envConfig);
+		
+		StoreConfig storeConfig = new StoreConfig();
+		storeConfig.setAllowCreate(true);
+		storeConfig.setTransactional(true);
+		this.store = new EntityStore(this.myEnv, "store", storeConfig);
+	}
 	
 	public void close() {
 		// Close store

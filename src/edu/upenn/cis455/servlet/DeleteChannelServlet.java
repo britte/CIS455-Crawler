@@ -36,7 +36,7 @@ public class DeleteChannelServlet extends HttpServlet {
 			for (Cookie c : cookies) {
 				if (c.getName().equals("cis455session")) user = c.getValue();
 			}
-	    	System.out.println(name);
+			
 	    	boolean removeSuccess = channelDB.removeChannel(name, user);
 	    	db.close();
 	    	

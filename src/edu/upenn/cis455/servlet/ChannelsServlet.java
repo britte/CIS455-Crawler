@@ -32,9 +32,9 @@ public class ChannelsServlet extends HttpServlet {
 	    	
 	    	ArrayList<Channel> channels = channelDB.getallChannels();
 	    	db.close();
+	    	
 		    for (int i = 0; i < channels.size(); i++) {
 		    	Channel c = channels.get(i);
-		    	System.out.println(c.getName());
 		    }
 	    	
 			String user = null;
@@ -50,9 +50,8 @@ public class ChannelsServlet extends HttpServlet {
 		    out.println("<ul>");
 		    for (int i = 0; i < channels.size(); i++) {
 		    	Channel c = channels.get(i);
-		    	System.out.println(c.getCreator());
 		    	if (c.getCreator().equals(user)) {
-		    		out.println("<li>" + c.getName() + "<a href=\"/HW2/delete?name=" + c.getName() + "\">Delete</a></li>");
+		    		out.println("<li>" + c.getName() + "<a href=\"/HW2/delete?name=" + c.getName() + "\">  Delete</a></li>");
 		    	} else {
 		    		out.println("<li>" + c.getName() + "</li>");
 		    	}
