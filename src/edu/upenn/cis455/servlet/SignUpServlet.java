@@ -11,6 +11,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.sleepycat.je.Transaction;
+
 @SuppressWarnings("serial")
 public class SignUpServlet extends HttpServlet {
 	
@@ -45,8 +47,9 @@ public class SignUpServlet extends HttpServlet {
 			}
 			
 			// Try to insert user
+			Transaction t = db.getTransaction();
 			boolean insertSuccess = userDB.insertUser(usr, pwd);
-			db.close();
+			t.commit();
 			
 			if (loggedIn || !insertSuccess) { 
 				PrintWriter out = response.getWriter();

@@ -8,6 +8,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.sleepycat.je.Transaction;
+
 import edu.upenn.cis455.storage.Channel;
 import edu.upenn.cis455.storage.ChannelDB;
 import edu.upenn.cis455.storage.DBWrapper;
@@ -45,8 +47,9 @@ public class AddChannelServlet extends HttpServlet {
 				if (c.getName().equals("cis455session")) user = c.getValue();
 			}
 		    
+			Transaction t = db.getTransaction();
 			boolean insertSuccess = channelDB.insertChannel(name, xpaths, xsl, user);
-			db.close();
+			t.commit();
 			
 		    if (name.isEmpty() || xsl.isEmpty() || xpaths.length == 0 || user == null || !insertSuccess) {
 				PrintWriter out = response.getWriter();

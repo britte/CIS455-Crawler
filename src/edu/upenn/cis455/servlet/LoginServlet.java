@@ -8,6 +8,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.sleepycat.je.Transaction;
+
 import edu.upenn.cis455.storage.DBWrapper;
 import edu.upenn.cis455.storage.User;
 import edu.upenn.cis455.storage.UserDB;
@@ -45,8 +47,9 @@ public class LoginServlet extends HttpServlet {
 				if (c.getName().equals("cis455session")) loggedIn = true;
 			}
 			
+			Transaction t = db.getTransaction();
 			User usr = userDB.getUserByEmail(email);	
-			db.close();
+			t.commit();
 			
 			boolean loginSuccess = (usr != null && usr.getPwd().equals(pwd));
 			

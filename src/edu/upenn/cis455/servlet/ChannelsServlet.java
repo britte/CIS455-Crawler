@@ -8,6 +8,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.sleepycat.je.Transaction;
+
 import edu.upenn.cis455.storage.Channel;
 import edu.upenn.cis455.storage.ChannelDB;
 import edu.upenn.cis455.storage.DBWrapper;
@@ -30,8 +32,9 @@ public class ChannelsServlet extends HttpServlet {
 	    	DBWrapper db = createDB(getServletContext().getInitParameter("BDBstore"));
 	    	ChannelDB channelDB = db.getChannelDB();
 	    	
+	    	Transaction t = db.getTransaction();
 	    	ArrayList<Channel> channels = channelDB.getallChannels();
-	    	db.close();
+	    	t.commit();
 	    	
 		    for (int i = 0; i < channels.size(); i++) {
 		    	Channel c = channels.get(i);

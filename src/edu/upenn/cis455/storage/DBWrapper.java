@@ -5,6 +5,7 @@ import java.io.File;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
+import com.sleepycat.je.Transaction;
 import com.sleepycat.persist.EntityStore;
 import com.sleepycat.persist.StoreConfig;
 import com.sleepycat.persist.impl.Store;
@@ -52,6 +53,10 @@ public class DBWrapper {
 		storeConfig.setAllowCreate(true);
 		storeConfig.setTransactional(true);
 		this.store = new EntityStore(this.myEnv, "store", storeConfig);
+	}
+	
+	public Transaction getTransaction() {
+		return this.myEnv.beginTransaction(null, null);
 	}
 	
 	public void close() {
