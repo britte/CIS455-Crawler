@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.PriorityQueue;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -23,40 +23,53 @@ public class XPathCrawler {
 	
 	private static HashMap<String, XPathEngineImpl> channels = new HashMap<String, XPathEngineImpl>();
 	
-	private PriorityQueue<String> crawlUrls = new PriorityQueue<String>();
-	private HashSet<String> seenUrls = new HashSet<String>();
+	private static LinkedList<String> crawlUrls = new LinkedList<String>();
+	private static HashSet<String> seenUrls = new HashSet<String>();
 	
-	private void crawl() {
+	private static long maxDocLength;
+	private static int maxNumDocs = -1;
+	
+	private static HttpClient currentClient;
+	
+	public XPathCrawler() {
+		channels = new HashMap<String, XPathEngineImpl>();
+		crawlUrls = new LinkedList<String>();
+		seenUrls = new HashSet<String>();
+	}
+		
+	public static void crawl() {
 		// Get a valid document off of the crawl queue
-		HttpClient client = null;
 		boolean validUrl = false;
+		String url = "";
 		
 		while (!validUrl) {
-			String url = crawlUrls.poll();
+			url = crawlUrls.poll();
 			if (url != null) {
-				client = new HttpClient(url);
-				validUrl = client.isValid();
+				currentClient = new HttpClient(url);
+				validUrl = currentClient.isValid();
 			} else {
 				break;
 			}
 		}
 		
-		if (!validUrl || client == null) { // the queue is empty
+		if (!validUrl || currentClient == null) { // the queue is empty
 			return;
-		} else {
-			Document d = client.getDoc();
-			// Compare document with tracked channels
-			compareChannels(d);
-			
-			// Explore given document
-			
-			// Find urls
-			// Parse out urls of interest
-			
+		} else if (currentClient.getDocLength() <= maxDocLength) {
+			// TODO: check if url has been modified since the last crawl
+			System.out.println(url + ": Downloading");
+			Document d = currentClient.getDoc();
+			if (currentClient.isXml()) {
+				// If the current document is xml, check against tracked channels
+				compareChannels(d);
+			} else if (currentClient.isHtml()) {
+				// If the current document is html, explore it for unseen links
+				getUrls(d);
+			}	
+			currentClient = null;
 		}
 	}
 	
-	public void getUrls(Document d) {
+	public static void getUrls(Document d) {
 		if (d == null) return;
 		// Find all link elements (<a>)
 		NodeList links = d.getElementsByTagName("a");
@@ -66,28 +79,51 @@ public class XPathCrawler {
 	        if (link.getNodeType() == Node.ELEMENT_NODE) {
 	            // Get href and clean up
 	        	Element e = (Element) link;
-	        	String href = cleanUrl(e.getAttribute("href"));
-	        		        	
+	        	String href = cleanUrl(e.getAttribute("href"), d);
 	        	// If url is new, add it to the seen list and the crawl queue
 	        	if (!href.isEmpty() && !seenUrls.contains(href)) {
 	        		seenUrls.add(href);
 	        		crawlUrls.add(href);
+//	        		System.out.println("Resource discovered: " + href);
 	        	}
 	        }
 	    }
 	}
 	
-	public String cleanUrl(String url) {
-		if (url == null) return url;
-		//TODO: implement
-		return url;
+	// Given an href url, return an expanded url based on whether
+	// it is absolute or relative
+	public static String cleanUrl(String url, Document d) {
+		if (currentClient == null || url == null) return null;
+		String baseUrl = currentClient.getBaseUrl(d);
+		if (url.indexOf("http://") != -1 || url.indexOf("https://") != -1) {
+			// absolute href 
+			return url;
+		} else if (url.indexOf(':') != -1) {
+			// invalid scheme type
+			// TODO: handle this more carefully
+			return null;
+		} else if (url.indexOf('/') == 0) {
+			// root relative path (format: "/path/subpath")
+			if (url.indexOf('.') != -1) { // file path
+				return currentClient.getRootUrl() + url.substring(1);	
+			} else { 
+				// ensure that a subpath that is NOT a file has a trailing "/"
+				if (!url.endsWith("/")) url = url + "/";
+				return currentClient.getRootUrl() + url.substring(1);
+			}
+		} else {
+			// directory relative path (format "path/subpath")
+			if (url.indexOf('.') != -1) { // file path
+				return currentClient.getBaseUrl(d) + url;	
+			} else { 
+				// ensure that a subpath that is NOT a file has a trailing "/"
+				if (!url.endsWith("/")) url = url + "/";
+				return currentClient.getBaseUrl(d) + url;
+			}
+		}
 	}
 	
-	public PriorityQueue getUrlQueue() {
-		return this.crawlUrls;
-	}
-	
-	private void compareChannels(Document d) {
+	private static void compareChannels(Document d) {
 		Iterator it = channels.entrySet().iterator();
 	    while (it.hasNext()) {
 	        Map.Entry channelEngine = (Map.Entry) it.next();
@@ -124,8 +160,8 @@ public class XPathCrawler {
 				// TODO: validate params in some way
 				// 1. The URL of the Web page at which to start.
 				String startURL = args[0];
-				HttpClient client = new HttpClient(startURL);
-				if (!client.isValid()) throw new Exception(); 
+				seenUrls.add(startURL);
+				crawlUrls.add(startURL);
 				
 				// 2. The directory containing the BerkeleyDB environment that holds your store.
 				// 	  The directory should be created if it does not already exist.
@@ -134,14 +170,40 @@ public class XPathCrawler {
 				setUpChannels(db);
 				
 				// 3. Max size, in megabytes, of a document to be retrieved from a Web server
-				int maxDocSize = Integer.parseInt(args[2]);
+				int mb = Integer.parseInt(args[2]);
+				maxDocLength = mb * 1000000; // conver megabytes to bytes
 				
 				// 4. (Optional) Number of files to search before stopping
-				Integer maxNumDocs; 
 				if (args.length == 4) maxNumDocs = Integer.parseInt(args[3]);
+				
+				// Start the crawler
+				while (!crawlUrls.isEmpty() && (maxNumDocs == -1 || seenUrls.size() < maxNumDocs)) {
+					crawl();
+				}
+				
 			} catch (Exception e) {
+				System.out.println(e);
 				throw new IllegalArgumentException("Usage: <start-url> <db-directory> <max-file-size> [<max-num-files>]");
 			}
 		}
+	}
+	
+	//
+	// Methods for testing
+	//
+	public LinkedList<String> getUrlQueue() {
+		return this.crawlUrls;
+	}
+	
+	public void setCurrentClient(HttpClient c) {
+		this.currentClient = c;
+	}
+	
+	public void setMaxDocLength(long len) {
+		this.maxDocLength = len;
+	}
+	
+	public void setMaxNumDocs(int num) {
+		this.maxNumDocs = num;
 	}
 }

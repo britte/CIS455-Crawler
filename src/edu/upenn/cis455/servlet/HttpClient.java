@@ -22,6 +22,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.w3c.tidy.Tidy;
 import org.xml.sax.SAXException;
 
@@ -80,6 +83,7 @@ public class HttpClient {
 		String path = urlObj.getFile();
 		out.println("HEAD " + path + " HTTP/1.1");
 		out.println("Host: " + host);
+		out.println("User-Agent: cis455crawler");
 		out.println();
 		out.flush();
 	}
@@ -89,6 +93,7 @@ public class HttpClient {
 		String path = urlObj.getFile();
 		out.println("GET " + path + " HTTP/1.1");
 		out.println("Host: " + host);
+		out.println("User-Agent: cis455crawler");
 		out.println();
 		out.flush();
 	}
@@ -161,6 +166,7 @@ public class HttpClient {
 				// Clean the body into XHTML 
 				Tidy tidy = new Tidy();
 				tidy.setMakeClean(true);
+				tidy.setShowWarnings(false);
 				tidy.setXHTML(true);
 				return tidy.parseDOM(new ByteArrayInputStream(body.toString().getBytes()), null);
 			} else if (isXml()) {
@@ -209,5 +215,33 @@ public class HttpClient {
 
 	public boolean modifiedSince(Date d) {
 		return this.lastModified == null || this.lastModified.after(d);
+	}
+	
+	// Return the base url for the page
+	public String getBaseUrl(Document d) {
+		if (!this.isValid()) return null;
+		NodeList base = d.getElementsByTagName("base");
+		if (base != null && base.getLength() > 0 && base.item(0).getNodeType() == Node.ELEMENT_NODE) {
+			// If the document contains a base element return the referenced base
+			Element baseElem = (Element) base.item(0);
+			return baseElem.getAttribute("href");
+		} else {
+			// If there is no base element the base is the directory of the current page
+			String protocol = this.urlObj.getProtocol() + "://";
+			String authority = this.urlObj.getAuthority();
+			String path = this.urlObj.getPath();
+			int lastSlash = path.lastIndexOf('/');
+			if (lastSlash != -1) path = path.substring(0, lastSlash + 1);
+			return protocol + authority + path;
+		}
+	}
+	
+	// Return the root url for the page
+	public String getRootUrl() {
+		return this.urlObj.getProtocol() + "://" + this.urlObj.getAuthority() + "/";
+	}
+	
+	public long getDocLength() {
+		return this.docLength;
 	}
 }
