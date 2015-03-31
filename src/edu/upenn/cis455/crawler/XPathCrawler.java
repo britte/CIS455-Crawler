@@ -230,7 +230,6 @@ public class XPathCrawler {
 	        		break;
 	        	}
 	        }
-	        it.remove(); 
 	    }
 	}
 	

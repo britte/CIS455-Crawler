@@ -50,7 +50,8 @@ public class ChannelsServlet extends HttpServlet {
 		    for (int i = 0; i < channels.size(); i++) {
 		    	Channel c = channels.get(i);
 		    	if (c.getCreator().equals(user)) {
-		    		out.println("<li>" + c.getName() + "<a href=\"/HW2/delete?name=" + c.getName() + "\">  Delete</a></li>");
+		    		out.println("<li><a href=\"/HW2/channel?name=" + c.getName() + "\">" + c.getName() + "</a>");
+		    		out.println("<a href=\"/HW2/delete?name=" + c.getName() + "\">  Delete</a></li>");
 		    	} else {
 		    		out.println("<li>" + c.getName() + "</li>");
 		    	}
