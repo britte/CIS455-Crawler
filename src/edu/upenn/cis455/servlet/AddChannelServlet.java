@@ -35,6 +35,7 @@ public class AddChannelServlet extends HttpServlet {
 	    	// Get channel params
 		    String name = request.getParameter("name");
 		    String xsl = request.getParameter("xsl");
+		    if (xsl.isEmpty()) xsl = "";
 		    String[] xpaths = request.getParameter("xpaths").split("\\|");
 		    for (int i = 0; i < xpaths.length; i++) {
 		    	xpaths[i] = xpaths[i].trim();
@@ -51,7 +52,7 @@ public class AddChannelServlet extends HttpServlet {
 			boolean insertSuccess = channelDB.insertChannel(name, xpaths, xsl, user);
 			t.commit();
 			
-		    if (name.isEmpty() || xsl.isEmpty() || xpaths.length == 0 || user == null || !insertSuccess) {
+		    if (name.isEmpty() || xpaths.length == 0 || user == null || !insertSuccess) {
 				PrintWriter out = response.getWriter();
 			    out.println("<html><head><title>XPath Servlet - Add Channel</title></head><body>");	
 			    out.println("<h3>Channel could not be successfully added!</h3>");

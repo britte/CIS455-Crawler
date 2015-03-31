@@ -60,13 +60,16 @@ public class ChannelServlet extends HttpServlet {
 	    	
 			PrintWriter out = response.getWriter();
 			out.println("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>");
+			if (!c.getXsl().isEmpty() && c.getXsl().endsWith(".xsl")) {
+				out.println("<?xml-stylesheet type=\"text/xsl\" href=\"" + c.getXsl() + "\"?>");
+			}
 		    out.println("<documentcollection>");
 		    while (docIter.hasNext()) {
 		    	CrawlDoc d = docIter.next();
 		    	SimpleDateFormat date = new SimpleDateFormat("yyyy-MM-dd");
 		    	SimpleDateFormat time = new SimpleDateFormat("HH:mm:ss");
 		    	String dt = date.format(d.getLastCrawled()) + "T" + time.format(d.getLastCrawled());
-	    		out.println("<document crawled=\"" + dt + "\" document=\"" + d.getUrl() + "\">");
+	    		out.println("<document crawled=\"" + dt + "\" location=\"" + d.getUrl() + "\">");
 	    		out.println(d.getDocBody());
 	    		out.println("</document>");
 		    }

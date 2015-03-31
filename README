@@ -2,15 +2,23 @@ Full name: Elizabeth Britton
 SEAS login: britte
 
 Which features did you implement? 
-  I implemented the entire milestone one. Specifically I coded
-  the XPathEngine and the servlet. The HttpClient for my servlet
-  is also in it's own class.
+  I implemented the basic requirements for milestone 2. 
 
 Did you complete any extra-credit tasks? If so, which ones?
-  no
+  No
 
 Any special instructions for building and running your solution?
-  No
+  I used Tomcat to test my servlet system. 
+  The app has some links to help naviagate across pages. However the full
+  path system is as follows: 
+  	/HW2/xpaths						the original ms1 path checker
+  	/HW2/signup						page to create an account
+  	/HW2/login						page to log into an existing account
+  	/HW2/logout						link to log out 
+  	/HW2/channels					page to show all channels in the system
+  	/HW2/channel?name=<name>		page to show data for a specific channel
+  	/HW2/addchannel					page to add a new channel
+  	/HW2/deletechannel?name=<name>	link to delete a channel
 
 Did you personally write _all_ the code you are submitting
 (other than code from the course web page)?

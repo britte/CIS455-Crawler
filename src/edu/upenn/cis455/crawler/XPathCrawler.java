@@ -75,72 +75,81 @@ public class XPathCrawler {
 		
 		if (!validUrl || res == null) return; // the queue is empty
 		
-		if (res.getDocLength() <= maxDocLength) {
-			// Check against robots.txt to confirm that page can be explored
-			boolean allowed = robotAllowed(url);
-			
-			// If download allowed, get the page Document
-			Document d = null;
-			if (!allowed) {
-				System.out.println(url + ": Access denied");
+		// Check against robots.txt to confirm that page can be explored
+		boolean allowed = robotAllowed(url);
+		
+		// If download allowed, get the page Document
+		Document d = null;
+		if (!allowed) {
+			System.out.println(url + ": Access denied");
+			return;
+		} 
+		
+		// Get Document
+		if (res.getStatus() == 304) {
+			// If document has been explored after last modification, get stored file
+			// (if the file is short enough)
+			d = doc.getDoc();
+			if (doc.getDocLength() > maxDocLength) {
+				System.out.println(url + ": File too big"); 
 				return;
-			} 
-			
-			// Get Document
-			if (res.getStatus() == 304) {
-				// If document has been explored after last modification, get stored file
-				d = doc.getDoc();
+			}
 
-				// Report download success/failure
-				if (d == null) {
-					System.out.println(url + ": DOWNLOAD FAILED"); 
-					return;
-				} else {
-		    		docsDownloaded += 1;
-					System.out.println(url + ": Not modified" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
-				}
+			// Report download success/failure
+			if (d == null) {
+				System.out.println(url + ": DOWNLOAD FAILED"); 
+				return;
 			} else {
-				// If document hasn't been explored since last modification download it
-				res = client.getResponse(url);
-				if (res == null) {
-					System.out.println(url + ": DOWNLOAD FAILED"); 
-					return;
-				}
-						
-				d = res.getDoc();
-				
-				// Report download success/failure
-				if (d == null) {
-					System.out.println(url + ": DOWNLOAD FAILED"); 
-					return;
-				} else {
-					// Mark url (re)crawled
-					Transaction t = db.getTransaction();
-			    	if (doc == null) { // never previously seen
-			    		doc = new CrawlDoc(url, res.getDocString(), res.getDocType());
-			    		crawlDB.insertCrawlDoc(doc, t);
-			    		docsDownloaded += 1;
-						System.out.println(url + ": Downloaded" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
-			    	} else { // previously seen
-			    		crawlDB.updateCrawlDoc(doc, t);
-			    		docsDownloaded += 1;
-						System.out.println(url + ": Updated" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
-			    	}
-			    	t.commit();
-				}
+	    		docsDownloaded += 1;
+				System.out.println(url + ": Not modified" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
+			}
+		} else {
+			// If document hasn't been explored since last modification download it
+			// (only if it is small enough)
+			res = client.getResponse(url);
+			if (res.getDocLength() > maxDocLength) {
+				System.out.println(url + ": File too big"); 
+				return;
 			}
 			
+			if (res == null) {
+				System.out.println(url + ": DOWNLOAD FAILED"); 
+				return;
+			}
+					
+			d = res.getDoc();
 			
-			// Handle further document processing by type
-			if (res.isXml()) {
-				// If the current document is xml, check against tracked channels
-				compareChannels(doc);
-			} else if (res.isHtml()) {
-				// If the current document is html, explore it for unseen links
-				getUrls(d);
-			}	
-			res = null;
+			// Report download success/failure
+			if (d == null) {
+				System.out.println(url + ": DOWNLOAD FAILED"); 
+				return;
+			} else {
+				// Mark url (re)crawled
+				Transaction t = db.getTransaction();
+		    	if (doc == null) { // never previously seen
+		    		doc = new CrawlDoc(url, res.getDocString(), res.getDocType(), res.getDocLength());
+		    		crawlDB.insertCrawlDoc(doc, t);
+		    		docsDownloaded += 1;
+					System.out.println(url + ": Downloaded" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
+		    	} else { // previously seen
+		    		crawlDB.updateCrawlDoc(doc, t);
+		    		docsDownloaded += 1;
+					System.out.println(url + ": Updated" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
+		    	}
+		    	t.commit();
+			}
 		}
+		
+		
+		// Handle further document processing by type
+		if (HttpResponse.isXml(doc.getDocType())) {
+			// If the current document is xml, check against tracked channels
+			compareChannels(doc);
+		} else if (HttpResponse.isHtml(doc.getDocType())) {
+			// If the current document is html, explore it for unseen links
+			getUrls(d);
+		}	
+		res = null;
 	}
 	
 	public static void getUrls(Document d) {

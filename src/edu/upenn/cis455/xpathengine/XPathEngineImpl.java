@@ -33,6 +33,7 @@ public class XPathEngineImpl implements XPathEngine {
 			path = null;
 			return true;
 		} catch (XPathException e) {
+			e.printStackTrace();
 			path = null;
 			return false;
 		}

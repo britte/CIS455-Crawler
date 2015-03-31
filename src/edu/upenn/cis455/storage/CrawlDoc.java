@@ -17,19 +17,23 @@ public class CrawlDoc {
 		 
 	private String doc;
 	private String docType;
+	private long docLength;
 	private Date lastCrawled;
 	
 	public CrawlDoc() {}
 	
-	public CrawlDoc(String url, String doc, String docType) {
+	public CrawlDoc(String url, String doc, String docType, long docLength) {
 		this.url = url; 
 		this.doc = doc;
 		this.docType = docType;
+		this.docLength = docLength;
 		this.lastCrawled = new Date();
 	}
 	
 	public String getUrl() { return this.url; }
 	public Document getDoc() { return HttpResponse.toDoc(this.doc, this.docType); }
+	public String getDocType() { return this.docType; }
+	public long getDocLength() { return this.docLength; }
 	public String getDocBody() { return this.doc.substring(this.doc.indexOf('>') + 1); }
 	public Date getLastCrawled() { return this.lastCrawled; }
 	

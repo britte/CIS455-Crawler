@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -29,100 +30,124 @@ public class HttpClient {
 
 	public HttpResponse getHead(String url, Date lastCrawled) throws IOException {
 		try {
-			// Send head request
-			if (!connect(url, false)) return null;
-			sendHeadReq(lastCrawled);
-			close();
-
-			// Read in response
-			if (!connect(url, true)) return null;
-			HttpResponse res = readHeadResponse();
-			close();
+			urlObj = new URL(url);
+			if (urlObj.getProtocol().equals("http")) {
+				// Create a socket connection
+				connectHttp(urlObj.getHost());
+				sendHeadReq(lastCrawled);
+				
+				// Read in response
+				HttpResponse res = readHeadResponse();
+				close();
+				return res;
+			} else if (urlObj.getProtocol().equals("https")){
+				// Create a URLConnection
+				this.conn = (HttpsURLConnection) urlObj.openConnection();
+				this.conn.setRequestMethod("HEAD");
+				this.conn.setRequestProperty("Host", urlObj.getHost());
+				this.conn.setRequestProperty("User-Agent", "cis455crawler");
+				if (lastCrawled != null) {
+					this.conn.setIfModifiedSince(lastCrawled.getTime());
+				}
+				
+				// Read in response
+				this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				HttpResponse res = readHeadResponse();
+				close();
+				return res;
+			} else {
+				// Invalid connection
+				return null;
+			}
 			
-			return res;
 		} catch (Exception e){
 			e.printStackTrace();
-			close();
 			return null;
 		}
 	}
 	
 	public HttpResponse getResponse(String url) throws IOException {
 		try {
-			// Send get request
-			if (!connect(url, false)) return null;
-			sendGetReq();
-			close();
+			urlObj = new URL(url);
+			if (urlObj.getProtocol().equals("http")) {
+				// Create a socket connection
+				connectHttp(urlObj.getHost());
+				sendGetReq();
+				
+				// Read in response
+				HttpResponse res = readFullResponse();
+				close();
+				return res;
+			} else if (urlObj.getProtocol().equals("https")){
+				// Create a URLConnection
+				this.conn = (HttpsURLConnection) urlObj.openConnection();
+				this.conn.setRequestMethod("GET");
+				this.conn.setRequestProperty("Host", urlObj.getHost());
+				this.conn.setRequestProperty("User-Agent", "cis455crawler");
+				
+				// Read in response
+				this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				HttpResponse res = readFullResponse();
+				close();
+				return res;
+			} else {
+				// Invalid connection
+				return null;
+			}
 			
-			// Read in response
-			if (!connect(url, true)) return null;
-			HttpResponse res = readFullResponse();
-			close();
-			
-			return res;
 		} catch (Exception e){
 			e.printStackTrace();
-			close();
 			return null;
 		}
 	}
 	
 	public RobotsTxtInfo getRobot(String rootUrl) throws IOException {
 		try {
-			// Send get request
-			if (!connect(rootUrl + "robots.txt", false)) return null;
-			sendGetReq();
-			close();
+			String url = rootUrl + "robots.txt";
+			urlObj = new URL(url);
+			if (urlObj.getProtocol().equals("http")) {
+				// Create a socket connection
+				connectHttp(urlObj.getHost());
+				sendGetReq();
+				
+				// Read in response
+				HttpResponse res = readHeadResponse();
+				RobotsTxtInfo robot = readRobotResponse(rootUrl, res.getDocLength());
+				close();
+				return robot;
+			} else if (urlObj.getProtocol().equals("https")){
+				// Create a URLConnection
+				this.conn = (HttpsURLConnection) urlObj.openConnection();
+				this.conn.setRequestMethod("GET");
+				this.conn.setRequestProperty("Host", urlObj.getHost());
+				this.conn.setRequestProperty("User-Agent", "cis455crawler");
+				
+				// Read in response
+				this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				HttpResponse res = readHeadResponse();
+				RobotsTxtInfo robot = readRobotResponse(rootUrl, res.getDocLength());
+				close();
+				return robot;
+			} else {
+				// Invalid connection
+				return null;
+			}
 			
-			// Read in headers & robot file
-			if (!connect(rootUrl + "robots.txt", true)) return null;
-			HttpResponse res = readHeadResponse();
-			RobotsTxtInfo robot = readRobotResponse(rootUrl, res.getDocLength());
-			close();
-			return robot;
-		} catch (Exception e) {
+		} catch (Exception e){
 			e.printStackTrace();
-			close();
 			return null;
 		}
 	}
 	
 	// Given a url, try to establish a connection in or out
-	private boolean connect(String url, boolean in) {
-		try {
-			urlObj = new URL(url);
-			if (urlObj.getProtocol().equals("http")) {
-				// HTTP connection 
-				InetAddress addr = InetAddress.getByName(urlObj.getHost());
-				this.s = new Socket(addr, 80);
-				if (in) {
-					this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));	
-				} else {
-					this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(s.getOutputStream())));
-				}
-				return true;
-			} else if (urlObj.getProtocol().equals("https")){
-				// HTTPS connection
-				this.conn = (HttpsURLConnection) urlObj.openConnection();
-				if (in) {
-					this.conn.setDoInput(true);
-					this.in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-				} else {
-					this.conn.setDoOutput(true);
-					this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(conn.getOutputStream())));
-				}
-				return true;
-			} else {
-				// Invalid connection
-				return false;
-			}
-			
-		} catch (Exception e){
-			e.printStackTrace();
-			return false;
-		}
+	private boolean connectHttp(String host) throws IOException {
+		InetAddress addr = InetAddress.getByName(host);
+		this.s = new Socket(addr, 80);
+		this.out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(s.getOutputStream())));
+		this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+		return true;
 	}
-	
+		
 	//
 	// Http Request and Response Handling
 	//
@@ -186,11 +211,14 @@ public class HttpClient {
 				contentLength = this.conn.getContentLengthLong();
 				
 				contentType = this.conn.getContentType();
-				int semi = contentType.indexOf(";");
-				if (semi != -1) contentType = contentType.substring(0, semi);
+				if (contentType != null) {
+					int semi = contentType.indexOf(";");
+					if (semi != -1) contentType = contentType.substring(0, semi);
+				}
 				return new HttpResponse(this.urlObj, status, contentLength, contentType);
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			return null;
 		} 
 	}

@@ -52,11 +52,6 @@
    	 <servlet-class>edu.upenn.cis455.servlet.DeleteChannelServlet</servlet-class>
    </servlet>
    
-   <servlet>
-   	 <servlet-name>crawled</servlet-name>
-   	 <servlet-class>edu.upenn.cis455.servlet.CrawledServlet</servlet-class>
-   </servlet>
-   
    <!-- Mappings -->
    
    <servlet-mapping>
@@ -97,11 +92,6 @@
    <servlet-mapping>
      <servlet-name>deletechannel</servlet-name>
      <url-pattern>/delete/*</url-pattern>
-   </servlet-mapping>  
-   
-   <servlet-mapping>
-     <servlet-name>crawled</servlet-name>
-     <url-pattern>/crawled</url-pattern>
    </servlet-mapping>  
    
 </web-app>
