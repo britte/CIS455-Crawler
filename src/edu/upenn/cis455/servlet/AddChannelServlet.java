@@ -35,7 +35,7 @@ public class AddChannelServlet extends HttpServlet {
 	    	// Get channel params
 		    String name = request.getParameter("name");
 		    String xsl = request.getParameter("xsl");
-		    String[] xpaths = request.getParameter("xpaths").split("|");
+		    String[] xpaths = request.getParameter("xpaths").split("\\|");
 		    for (int i = 0; i < xpaths.length; i++) {
 		    	xpaths[i] = xpaths[i].trim();
 		    }

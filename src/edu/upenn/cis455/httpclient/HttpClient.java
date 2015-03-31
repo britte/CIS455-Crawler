@@ -1,38 +1,22 @@
 package edu.upenn.cis455.httpclient;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.Socket;
-import java.net.URLConnection;
-import java.net.UnknownHostException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.tidy.Tidy;
-import org.xml.sax.SAXException;
-
-import edu.upenn.cis455.crawler.info.RobotsTxtInfo;
 
 public class HttpClient {
+	
+	private String dateFormat = "EEE, d MMM YYYY HH:mm:ss z";
 	
 	private Socket s; // only for http
 	private HttpsURLConnection conn; // only for https
@@ -63,12 +47,11 @@ public class HttpClient {
 		}
 	}
 	
-	public HttpResponse getResponse(String url, Date lastCrawled) throws IOException {
+	public HttpResponse getResponse(String url) throws IOException {
 		try {
-			
 			// Send get request
 			if (!connect(url, false)) return null;
-			sendGetReq(lastCrawled);
+			sendGetReq();
 			close();
 			
 			// Read in response
@@ -88,7 +71,7 @@ public class HttpClient {
 		try {
 			// Send get request
 			if (!connect(rootUrl + "robots.txt", false)) return null;
-			sendGetReq(null);
+			sendGetReq();
 			close();
 			
 			// Read in headers & robot file
@@ -150,11 +133,15 @@ public class HttpClient {
 		out.println("HEAD " + path + " HTTP/1.1");
 		out.println("Host: " + host);
 		out.println("User-Agent: cis455crawler");
+		if (lastCrawled != null) {
+			SimpleDateFormat date = new SimpleDateFormat(this.dateFormat);
+			out.println("If-Modified-Since: " + date.format(lastCrawled));
+		}
 		out.println();
 		out.flush();
 	}
 	
-	private void sendGetReq(Date lastCrawled) {
+	private void sendGetReq() {
 		String host = urlObj.getHost();
 		String path = urlObj.getFile();
 		out.println("GET " + path + " HTTP/1.1");
@@ -166,7 +153,6 @@ public class HttpClient {
 	
 	private HttpResponse readHeadResponse() throws IOException {
 		try {
-			
 			int status;
 			String contentType = null;
 			Long contentLength = null;
@@ -197,7 +183,6 @@ public class HttpClient {
 			} else {
 				// If reading through a URLConnection, header information is part of the connection
 				status = this.conn.getResponseCode();
-				
 				contentLength = this.conn.getContentLengthLong();
 				
 				contentType = this.conn.getContentType();
@@ -226,12 +211,8 @@ public class HttpClient {
 					body.append((char) in.read());
 					len --;
 				}
-				// Clean the body into XHTML 
-				Tidy tidy = new Tidy();
-				tidy.setMakeClean(true);
-				tidy.setShowWarnings(false);
-				tidy.setXHTML(true);
-				res.setDocument(tidy.parseDOM(new ByteArrayInputStream(body.toString().getBytes()), null));
+				
+				res.setDocument(body.toString());
 				return res;
 			} else if (res.isXml()) {
 				StringBuilder body = new StringBuilder();
@@ -241,9 +222,7 @@ public class HttpClient {
 					len --;
 				}
 
-				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-				DocumentBuilder db = factory.newDocumentBuilder();
-				res.setDocument(db.parse(new ByteArrayInputStream(body.toString().getBytes())));
+				res.setDocument(body.toString());
 				return res;
 			} else {
 				return null;

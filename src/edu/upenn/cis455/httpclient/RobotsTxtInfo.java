@@ -1,4 +1,4 @@
-package edu.upenn.cis455.crawler.info;
+package edu.upenn.cis455.httpclient;
 
 import java.util.ArrayList;
 import java.util.HashMap;

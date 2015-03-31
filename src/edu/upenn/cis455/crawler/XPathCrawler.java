@@ -13,9 +13,11 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import edu.upenn.cis455.crawler.info.RobotsTxtInfo;
+import com.sleepycat.je.Transaction;
+
 import edu.upenn.cis455.httpclient.HttpClient;
 import edu.upenn.cis455.httpclient.HttpResponse;
+import edu.upenn.cis455.httpclient.RobotsTxtInfo;
 import edu.upenn.cis455.storage.Channel;
 import edu.upenn.cis455.storage.ChannelDB;
 import edu.upenn.cis455.storage.CrawlDoc;
@@ -38,7 +40,7 @@ public class XPathCrawler {
 	private static HttpClient client = new HttpClient();
 	private static HttpResponse res;
 	
-	private static String dbPath;
+	private static DBWrapper db;
 	
 	public XPathCrawler() {
 		channels = new HashMap<String, XPathEngineImpl>();
@@ -48,56 +50,89 @@ public class XPathCrawler {
 	}
 		
 	public static void crawl() throws Exception {
+		
+		CrawlDocDB crawlDB = db.getCrawlDocDB();
+		CrawlDoc doc = null;
+		
 		// Get a valid document off of the crawl queue
 		boolean validUrl = false;
 		String url = "";
-		
 		while (!validUrl) {
 			url = crawlUrls.poll();
 			if (url != null) {
-				res = client.getHead(url, null);
+				// Check if url matches a previously crawled document
+		    	doc = crawlDB.getDocByUrl(url);
+		    	if (doc != null) { // seen before
+		    		res = client.getHead(url, doc.getLastCrawled());
+		    	} else { // not previously seen
+					res = client.getHead(url, null);	
+		    	}
 				validUrl = (res != null);
 			} else {
 				break;
 			}
 		}
 		
-		if (!validUrl || res == null) { // the queue is empty
-			return;
-		} else if (res.getDocLength() <= maxDocLength) {
-			// TODO: robot check
-			RobotsTxtInfo robot = client.getRobot(res.getRootUrl());
-			boolean allowed = true;
-			if (robot != null) {
-				if (robot.containsUserAgent("cis455crawler")) {
-					allowed = robot.checkLink("cis455crawler", url);
-					// TODO: check if url has been modified since the last crawl
-					res = client.getResponse(url, null);
-				} else if (robot.containsUserAgent("*")) {
-					allowed = robot.checkLink("*", url);
-					res = client.getResponse(url, null);
-				}
-			}
-			if (res == null || !allowed) { // some error occurred downloading the response
+		if (!validUrl || res == null) return; // the queue is empty
+		
+		if (res.getDocLength() <= maxDocLength) {
+			// Check against robots.txt to confirm that page can be explored
+			boolean allowed = robotAllowed(url);
+			
+			// If download allowed, get the page Document
+			Document d = null;
+			if (!allowed) {
 				System.out.println(url + ": Access denied");
 				return;
+			} 
+			
+			// Get Document
+			if (res.getStatus() == 304) {
+				// If document has been explored after last modification, get stored file
+				d = doc.getDoc();
+
+				// Report download success/failure
+				if (d == null) {
+					System.out.println(url + ": DOWNLOAD FAILED"); 
+					return;
+				} else {
+		    		docsDownloaded += 1;
+					System.out.println(url + ": Not modified" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
+				}
+			} else {
+				// If document hasn't been explored since last modification download it
+				res = client.getResponse(url);
+				if (res == null) {
+					System.out.println(url + ": DOWNLOAD FAILED"); 
+					return;
+				}
+						
+				d = res.getDoc();
+				
+				// Report download success/failure
+				if (d == null) {
+					System.out.println(url + ": DOWNLOAD FAILED"); 
+					return;
+				} else {
+					// Mark url (re)crawled
+					Transaction t = db.getTransaction();
+			    	if (doc == null) { // never previously seen
+			    		doc = new CrawlDoc(url, res.getDocString(), res.getDocType());
+			    		crawlDB.insertCrawlDoc(doc, t);
+			    		docsDownloaded += 1;
+						System.out.println(url + ": Downloaded" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
+			    	} else { // previously seen
+			    		crawlDB.updateCrawlDoc(doc, t);
+			    		docsDownloaded += 1;
+						System.out.println(url + ": Updated" + (maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
+			    	}
+			    	t.commit();
+				}
 			}
 			
-			docsDownloaded += 1;
-			System.out.println(url + ": Downloading" + 
-								(maxNumDocs == -1 ? "" : (" (" + docsDownloaded + "/" + maxNumDocs + ")")));
-			Document d = res.getDoc();
+			
+			// Handle further document processing by type
 			if (res.isXml()) {
-				DBWrapper db = new DBWrapper(dbPath);
-		    	CrawlDocDB crawlDB = db.getCrawlDocDB();
-		    	CrawlDoc doc = crawlDB.getDocByUrl(url);
-		    	if (doc == null) { // never previously seen
-		    		doc = new CrawlDoc(url, d);
-		    		crawlDB.insertCrawlDoc(url, doc);
-		    	} else {
-		    		// TODO: if previously seen, update
-		    		doc.setLastCrawled();
-		    	}
 				// If the current document is xml, check against tracked channels
 				compareChannels(doc);
 			} else if (res.isHtml()) {
@@ -123,7 +158,6 @@ public class XPathCrawler {
 	        	if (!href.isEmpty() && !seenUrls.contains(href)) {
 	        		seenUrls.add(href);
 	        		crawlUrls.add(href);
-//	        		System.out.println("Resource discovered: " + href);
 	        	}
 	        }
 	    }
@@ -162,17 +196,37 @@ public class XPathCrawler {
 		}
 	}
 	
-	private static void compareChannels(CrawlDoc d) throws Exception {
+	// Determine if a given allowed by the robots.txt file (if one exits)
+	private static boolean robotAllowed(String url) throws IOException {
+		RobotsTxtInfo robot = client.getRobot(res.getRootUrl());
+		if (robot != null) {
+			if (robot.containsUserAgent("cis455crawler")) {
+				return robot.checkLink("cis455crawler", url);
+			} else if (robot.containsUserAgent("*")) {
+				return robot.checkLink("*", url);
+			} else {
+				return true;
+			}
+		} else {
+			return true;
+		}
+	}
+	
+	private static void compareChannels(CrawlDoc doc) throws Exception {
 		Iterator it = channels.entrySet().iterator();
-		DBWrapper db = new DBWrapper(dbPath);
     	ChannelDB channelDB = db.getChannelDB();
 	    while (it.hasNext()) {
 	        Map.Entry channelEngine = (Map.Entry) it.next();
+	        String channelName = (String) channelEngine.getKey();
 	        XPathEngineImpl xpathEngine = (XPathEngineImpl) channelEngine.getValue();
-	        boolean[] match = xpathEngine.evaluate(d.getDoc());
+	        boolean[] match = xpathEngine.evaluate(doc.getDoc());
 	        for (int i=0; i < match.length; i++) {
 	        	if (match[i]) {
-	        		
+	        		Transaction t = db.getTransaction();
+	        		Channel c = channelDB.getChannelByName(channelName);
+	        		c.addMatch(doc.getUrl());
+	        		channelDB.updateChannel(c);
+	        		t.commit();
 	        		break;
 	        	}
 	        }
@@ -181,10 +235,8 @@ public class XPathCrawler {
 	}
 	
 	private static void setUpChannels() throws Exception {
-		DBWrapper db = new DBWrapper(dbPath);
     	ChannelDB channelDB = db.getChannelDB();
     	ArrayList<Channel> cs = channelDB.getallChannels();
-    	db.close();
 		System.out.println("Total channels: " + cs.size());
 		// Create map from each channel's name --> XPathEngine for its xpaths
 		for (int i=0; i< cs.size(); i++) {
@@ -209,7 +261,8 @@ public class XPathCrawler {
 				
 				// 2. The directory containing the BerkeleyDB environment that holds your store.
 				// 	  The directory should be created if it does not already exist.
-				dbPath = args[1];
+				String dbPath = args[1];
+				db = new DBWrapper(dbPath);
 				setUpChannels();
 				
 				// 3. Max size, in megabytes, of a document to be retrieved from a Web server

@@ -10,12 +10,12 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.sleepycat.je.Transaction;
 
-import edu.upenn.cis455.storage.Channel;
-import edu.upenn.cis455.storage.ChannelDB;
+import edu.upenn.cis455.storage.CrawlDoc;
+import edu.upenn.cis455.storage.CrawlDocDB;
 import edu.upenn.cis455.storage.DBWrapper;
 
 @SuppressWarnings("serial")
-public class ChannelsServlet extends HttpServlet {
+public class CrawledServlet extends HttpServlet {
 	
 	private DBWrapper createDB(String dir) throws Exception {
 		return new DBWrapper(dir);
@@ -30,10 +30,10 @@ public class ChannelsServlet extends HttpServlet {
 		try {			
 		    // Set up DB
 	    	DBWrapper db = createDB(getServletContext().getInitParameter("BDBstore"));
-	    	ChannelDB channelDB = db.getChannelDB();
+	    	CrawlDocDB crawlDB = db.getCrawlDocDB();
 	    	
 	    	Transaction t = db.getTransaction();
-	    	ArrayList<Channel> channels = channelDB.getallChannels();
+	    	ArrayList<CrawlDoc> docs = crawlDB.getallDocs();
 	    	t.commit();
 	    	
 			String user = null;
@@ -43,17 +43,13 @@ public class ChannelsServlet extends HttpServlet {
 			}
 	    	
 			PrintWriter out = response.getWriter();
-		    out.println("<html><head><title>XPath Servlet - Channels</title></head><body>");	
-		    out.println("<h1>Channels</h1>");
-		    out.println("<p>Total Channels: " + channels.size() + "</p><br />");
+		    out.println("<html><head><title>XPath Servlet - Docs</title></head><body>");	
+		    out.println("<h1>Docs</h1>");
+		    out.println("<p>Total Docs: " + docs.size() + "</p><br />");
 		    out.println("<ul>");
-		    for (int i = 0; i < channels.size(); i++) {
-		    	Channel c = channels.get(i);
-		    	if (c.getCreator().equals(user)) {
-		    		out.println("<li>" + c.getName() + "<a href=\"/HW2/delete?name=" + c.getName() + "\">  Delete</a></li>");
-		    	} else {
-		    		out.println("<li>" + c.getName() + "</li>");
-		    	}
+		    for (int i = 0; i < docs.size(); i++) {
+		    	CrawlDoc d = docs.get(i);
+	    		out.println("<li>" + d.getUrl() + " : " + d.getLastCrawled() + "</li>");
 		    }
 		    out.println("</ul>");
 		    out.println("</body></html>");

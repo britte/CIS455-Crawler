@@ -36,7 +36,7 @@ public class XPathServlet extends HttpServlet {
 			
 			// Try to get document
 			HttpClient client = new HttpClient();
-			HttpResponse res = client.getResponse(url, null);
+			HttpResponse res = client.getResponse(url);
 			Document d = res.getDoc();
 			
 			if (d == null) { // error connecting to server

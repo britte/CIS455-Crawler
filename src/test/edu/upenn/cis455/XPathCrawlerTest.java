@@ -28,7 +28,7 @@ public class XPathCrawlerTest {
 	@Test
 	public void testGetUrlsHttp() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("http://www.junumusic.com/", null);
+		HttpResponse res = client.getResponse("http://www.junumusic.com/");
 		Document d = res.getDoc();
 		
 		crawler.setCurrentResponse(res);
@@ -39,7 +39,7 @@ public class XPathCrawlerTest {
 	@Test
 	public void testGetUrlsHttps() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html", null);
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html");
 		Document d = res.getDoc();
 		
 		crawler.setCurrentResponse(res);
@@ -50,7 +50,7 @@ public class XPathCrawlerTest {
 	@Test
 	public void testCleanUrl() throws IOException {		
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/", null);
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/");
 		Document d = res.getDoc();
 		
 		crawler.setCurrentResponse(res);
@@ -63,7 +63,7 @@ public class XPathCrawlerTest {
 	@Test
 	public void testMaxDocSize() throws IOException {		
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/", null);
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/");
 		Document d = res.getDoc();
 		
 		crawler.setCurrentResponse(res);

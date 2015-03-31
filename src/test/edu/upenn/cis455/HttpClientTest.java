@@ -8,16 +8,16 @@ import java.util.ArrayList;
 import org.junit.Test;
 import org.w3c.dom.Document;
 
-import edu.upenn.cis455.crawler.info.RobotsTxtInfo;
 import edu.upenn.cis455.httpclient.HttpClient;
 import edu.upenn.cis455.httpclient.HttpResponse;
+import edu.upenn.cis455.httpclient.RobotsTxtInfo;
 
 public class HttpClientTest {
 
 	@Test
 	public void testHttp() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("http://www.junumusic.com/", null);
+		HttpResponse res = client.getResponse("http://www.junumusic.com/");
 		
 		assertNotNull(res);
 		assertTrue(res.isHtml());
@@ -29,7 +29,7 @@ public class HttpClientTest {
 	@Test
 	public void testHttps() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html", null);
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html");
 		
 		assertNotNull(res);
 		assertTrue(res.isHtml());
@@ -41,7 +41,7 @@ public class HttpClientTest {
 	@Test
 	public void testGetRelativeUrlsHasBaseElem() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("http://www.w3schools.com/tags/tryhtml_base_test.htm", null);
+		HttpResponse res = client.getResponse("http://www.w3schools.com/tags/tryhtml_base_test.htm");
 		
 		assertNotNull(res);
 		assertTrue(res.isHtml());
@@ -56,7 +56,7 @@ public class HttpClientTest {
 	@Test
 	public void testGetBaseUrlNoBaseElem1() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html", null);
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest.html");
 		
 		assertNotNull(res);
 		assertTrue(res.isHtml());
@@ -72,7 +72,7 @@ public class HttpClientTest {
 	@Test
 	public void testGetBaseUrlNoBaseElem2() throws IOException {
 		HttpClient client = new HttpClient();
-		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/marie/tpc/", null);
+		HttpResponse res = client.getResponse("https://dbappserv.cis.upenn.edu/crawltest/marie/tpc/");
 		
 		assertNotNull(res);
 		assertTrue(res.isHtml());

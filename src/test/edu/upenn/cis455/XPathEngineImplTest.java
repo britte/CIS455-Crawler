@@ -168,7 +168,7 @@ public class XPathEngineImplTest {
 	public void evaluateTestWeb() throws IOException{
         // Set up online document
         HttpClient client = new HttpClient();
-        HttpResponse res = client.getResponse("http://www.w3schools.com/xml/note.xml", null);
+        HttpResponse res = client.getResponse("http://www.w3schools.com/xml/note.xml");
         webd = res.getDoc();
         client.close();
         

@@ -1,6 +1,7 @@
 package edu.upenn.cis455.storage;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import com.sleepycat.persist.model.Entity;
 import com.sleepycat.persist.model.PrimaryKey;
@@ -19,7 +20,7 @@ public class Channel {
 	private String[] xpaths;
 	private String xsl;
 	
-//	private ArrayList<CrawlDoc> matchedUrls;
+	private HashSet<String> matchedUrls;
 	
 	public Channel() {}
 	
@@ -28,14 +29,14 @@ public class Channel {
 		this.xpaths = xpaths;
 		this.xsl = xsl;
 		this.creator = creator;
-//		this.matchedUrls = new ArrayList<CrawlDoc>();
+		this.matchedUrls = new HashSet<String>();
 	}
 	
 	public String getName() { return this.name; }
 	public String[] getXPaths() { return this.xpaths; }
 	public String getXsl() { return this.xsl; }
 	public String getCreator() { return this.creator; }
-//	public ArrayList<CrawlDoc> getMatched() { return this.matchedUrls; } 
+	public HashSet<String> getMatched() { return this.matchedUrls; } 
 	
 	public void setName(String name) {
 		this.name = name;
@@ -49,8 +50,8 @@ public class Channel {
 		this.xsl = xsl;
 	}
 	
-//	public void addMatch(CrawlDoc doc) {
-//		this.matchedUrls.add(doc);
-//	}
+	public void addMatch(String doc) {
+		this.matchedUrls.add(doc);
+	}
 	
 }

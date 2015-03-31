@@ -47,10 +47,6 @@ public class ChannelDB {
 		}
 	}
 	
-//	public Channel[] getChannelsByCreator(String creator) {
-//		return channelByCreator.g;
-//	}
-	
 	// Inserts a channel into the store if it doesn't already exist
 	// Returns true if channel was inserted, false if if existed already
 	public boolean insertChannel(String name, String[] xpaths, String xsl, String creator) {
@@ -60,5 +56,10 @@ public class ChannelDB {
 			channelByName.put(new Channel(name, xpaths, xsl, creator));
 			return true;
 		}
+	}
+	
+	// Updates a channel into the store 
+	public void updateChannel(Channel c) {
+		channelByName.put(c);
 	}
 }
